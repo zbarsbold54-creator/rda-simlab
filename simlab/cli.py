@@ -53,6 +53,8 @@ def main(argv: list[str] | None = None) -> int:
     trainp.add_argument("--profile", action="store_true")
     trainp.add_argument("--update-threads", type=int, default=None)
     trainp.add_argument("--update-device", choices=["cpu", "cuda"], default="cpu")
+    trainp.add_argument("--gamma", type=float, default=None)
+    trainp.add_argument("--rollout", type=int, default=None)
     args = parser.parse_args(argv)
     if args.command == "run":
         return run_simulation(args.steps, args.seed)
@@ -209,16 +211,21 @@ def run_eval(args: argparse.Namespace) -> int:
 def run_train(args: argparse.Namespace) -> int:
     from simlab.training.ppo import PPOConfig, PPOTrainer
 
-    cfg = PPOConfig(
-        obs_mode=args.obs,
-        total_steps=args.total_steps,
-        workers=args.workers,
-        seed=args.seed,
-        eval_every=args.eval_every,
-        profile=args.profile,
-        update_threads=args.update_threads,
-        update_device=args.update_device,
-    )
+    cfg_kwargs = {
+        "obs_mode": args.obs,
+        "total_steps": args.total_steps,
+        "workers": args.workers,
+        "seed": args.seed,
+        "eval_every": args.eval_every,
+        "profile": args.profile,
+        "update_threads": args.update_threads,
+        "update_device": args.update_device,
+    }
+    if args.gamma is not None:
+        cfg_kwargs["gamma"] = args.gamma
+    if args.rollout is not None:
+        cfg_kwargs["env_steps_per_rollout"] = args.rollout
+    cfg = PPOConfig(**cfg_kwargs)
     if args.arch:
         from simlab.training.arch_spec import load_arch_toml
 

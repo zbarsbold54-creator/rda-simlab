@@ -1045,3 +1045,24 @@ cuda                    59.78       80.37         254.8
 ```
 
 Recommended: CPU update with default threads (N=1); GPU split not worth keeping.
+## det-v0 (commit 35b63a8) - multi-worker determinism fix
+- _collect sorts rollout results by rank (was arrival order -> nondeterministic).
+- _rollout_worker re-seeds per-iteration action RNG from a pure function of
+  (training_seed, worker_id, iteration).
+- workers=1/2/4 all bit-identical across separate processes; full suite 87 passed.
+- Legacy eval unchanged (cap 5.0%, median 3705).
+
+## det-v1 (commit 29cfe22) - training seed plumbing
+- _build_net passes cfg.seed into policy init (was hardcoded 0); audit of all
+  training-seed consumers documented in docs/DIAGNOSTICS.md.
+- Test: different training seeds -> different initial weights; same seed ->
+  identical initial weights across processes. Gate 0(b) bit-identical with
+  workers=4.
+
+## diag-v0 (horizon diagnostic)
+- Driver scripts/ppo_horizon_diag.py (resumable, lock file, checksum, mid-run
+  evals, final evals). Exposed --gamma / --rollout train flags.
+- 6-arm run (R256/R1024/G999 x seeds 100000/100001, 300k env steps, workers=4).
+- Result: R1024 and G999 both help vs R256 baseline on cap%; R1024 strongest
+  (balanced 25-28% vs 0-1%). Seed noise does not dominate. See
+  docs/DIAGNOSTICS.md.
