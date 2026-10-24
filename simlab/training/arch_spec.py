@@ -394,6 +394,14 @@ add_spec(
 )
 add_spec(
     "backbone",
+    "gru_legacy",
+    description="The learner-v0 GRU net exactly (hidden 64, no FiLM).",
+    config=GRUConfig,
+    loader=lambda: _load_backbone("gru_legacy"),
+    source=__name__,
+)
+add_spec(
+    "backbone",
     "transformer",
     description="Small causal Transformer over the last K obs steps.",
     config=TransformerConfig,
@@ -408,11 +416,29 @@ _RDA_VARIANTS = {
     "rda_g3": "per-drive surprise gate (G3)",
     "rda_g3_tied": "per-drive gate tied to G1",
 }
+_RETENTION_DESC = {
+    "fixed": "fixed decay",
+    "constant": "learned constant E (control)",
+    "surprise": "shared surprise gate (G1)",
+    "surprise_rand": "surprise_rand control gate",
+    "per_drive": "per-drive surprise gate (G3)",
+    "per_drive_tied": "per-drive gate tied to G1",
+}
+for _kind, _bb_desc in (("gru", "GRU encoder"), ("tf", "Transformer encoder")):
+    for _mode, _desc in _RETENTION_DESC.items():
+        add_spec(
+            "backbone",
+            f"rda_{_kind}_{_mode}",
+            description=f"RDA ({_bb_desc}) retention variant: {_desc}.",
+            config=RDAConfig if _kind == "gru" else TransformerConfig,
+            loader=lambda n=f"rda_{_kind}_{_mode}": _load_backbone(n),
+            source=__name__,
+        )
 for _name, _desc in _RDA_VARIANTS.items():
     add_spec(
         "backbone",
         _name,
-        description=f"RDA variant: {_desc}.",
+        description=f"RDA variant (alias of rda_gru_*): {_desc}.",
         config=RDAConfig,
         loader=lambda n=_name: _load_backbone(n),
         source=__name__,
@@ -431,7 +457,7 @@ def build_policy_cfg(selection: dict[str, Any]) -> dict[str, Any]:
     """
     backbone = selection.get("backbone", "gru")
     obs_mode = selection.get("obs_mode", "obs_only")
-    if backbone in _RDA_VARIANTS:
+    if backbone.startswith("rda"):
         obs_mode = "obs_drives"
     return {
         "backbone": backbone,

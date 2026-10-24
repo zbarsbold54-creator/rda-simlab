@@ -49,14 +49,18 @@ To add a new rule:
    enabled.
 4. Register the variant as an ArchSpec in
    [simlab/training/arch_spec.py](simlab/training/arch_spec.py) by adding it
-   to `_RDA_VARIANTS`; the factory loop then exposes it in the GUI dropdowns
-   with a generated form, and `build_policy_cfg` forces `obs_drives` for it.
+   to `_RDA_VARIANTS` (aliases) or to `_RETENTION_DESC` (combos); the factory
+   loop then exposes it in the GUI dropdowns with a generated form, and
+   `build_policy_cfg` forces `obs_drives` for any `rda*` name.
 5. The backbone factory (`simlab/training/backbones.py`) maps the preset name
    to the retention mode. Add the mapping there and confirm `config_dict`
    round-trips the variant name so checkpoints restore the correct rule.
 6. Add a causality test in `tests/test_rda.py` for the new variant.
 
-All RDA variants share the obs encoder and heads, and a size-matching helper
-keeps the parameter counts within 5% of the shared `rda` reference (aux heads
-are allocated for every mode and contribute loss only in the modes that use
-them).
+All RDA variants share the obs encoder and heads, and the `match_params` helper
+picks a hidden / `d_model` size so parameter counts land within 5% of the target
+(the GUI and tests size-match to the transformer reference). The **auxiliary
+loss is uniform across every retention variant** (`pred_o` and `pred_d` heads,
+both always included with the same weight) — only the gate differs between
+variants. `test_aux_loss_parity_across_variants` verifies equality when the
+aux-head weights are shared.

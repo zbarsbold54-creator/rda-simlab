@@ -282,3 +282,70 @@ def test_multiworker_rda_training_is_deterministic(bb: str, tmp_path: Path) -> N
     assert set(a) == set(b)
     for k in a:
         assert torch.equal(a[k], b[k]), f"tensor diverged for {bb}: {k}"
+
+
+# --------------------------------------------------------- aux-loss parity
+def test_aux_loss_parity_across_variants() -> None:
+    """Aux loss is nonzero and equal in expectation across ALL retention modes."""
+    modes = (
+        "fixed",
+        "constant",
+        "surprise",
+        "surprise_rand",
+        "per_drive",
+        "per_drive_tied",
+    )
+    n, h = N_DRIVES, 16
+    B, T = 4, 6
+    torch.manual_seed(0)
+
+    rets = {m: Retention(mode=m, n_drives=n, hidden=h) for m in modes}
+    # Share the aux-head weights across all variants so only the gate differs.
+    canon = rets["fixed"]._base
+    for m, r in rets.items():
+        r._base.pred_o.load_state_dict(canon.pred_o.state_dict())
+        r._base.pred_d.load_state_dict(canon.pred_d.state_dict())
+
+    o = torch.randn(T, B, h)
+    d = torch.rand(T, B, n)
+    losses: dict[str, float] = {}
+    for m, r in rets.items():
+        r.eval()
+        rs = r.initial_state(B)
+        acc = 0.0
+        with torch.no_grad():
+            for k in range(T):
+                _, rs, met = r.step(o[k], d[k], rs)
+                acc += float(met["aux_loss"])
+        losses[m] = acc / T
+
+    for m, v in losses.items():
+        assert v > 1e-6, f"{m} aux loss is zero"
+    base = losses["fixed"]
+    for m, v in losses.items():
+        assert abs(v - base) < 1e-5, f"aux loss not equal across variants: {losses}"
+
+
+# ------------------------------------------------- gru_legacy fixture identity
+def test_gru_legacy_loads_fixture_identically() -> None:
+    """The learner-v0 fixture loads into gru_legacy with identical weights."""
+    fix = torch.load(
+        REPO / "tests/fixtures/learner_v0_final.pt",
+        map_location="cpu",
+        weights_only=False,
+    )
+    pol = make_policy(
+        {"backbone": "gru_legacy", "fusion": "none", "obs_mode": "obs_only", "seed": 0}
+    )
+    pol._load_checkpoint(REPO / "tests/fixtures/learner_v0_final.pt")
+    assert pol.param_count() == 9798
+    sd = pol._backbone._net.state_dict()
+    fsd = fix["state_dict"] if isinstance(fix, dict) and "state_dict" in fix else fix
+    assert set(sd.keys()) == set(fsd.keys()), (
+        set(sd.keys()) ^ set(fsd.keys())
+    )
+    for k in sd:
+        assert torch.equal(
+            sd[k].detach().reshape(-1).float(),
+            torch.as_tensor(fsd[k]).reshape(-1).float(),
+        ), k

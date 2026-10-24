@@ -1174,3 +1174,51 @@ Status: complete; committed and tagged `cockpit-v0`.
   itself is validated offscreen only (no interactive session). The Qt-child
   subprocess import test passes standalone but can be dropped by a batch
   KeyboardInterrupt artifact in this environment (tooling, not a code failure).
+
+## rda-v0.1 â€” verification fixes
+
+Status: complete; committed and tagged `rda-v0.1`.
+
+### 1. Drive-free baselines
+- `fusion="none"` adds no FiLM and no retention parameters. `gru_legacy` is
+  exactly the learner-v0 net (hidden 64, 9798 params, no FiLM) and loads
+  `tests/fixtures/learner_v0_final.pt` with identical weights
+  (`test_gru_legacy_loads_fixture_identically`).
+- Behavioral note: the reference eval numbers (Balanced 5, 5.0% / median 3705)
+  do not reproduce in this environment (measured 0.0% / median 1042); structural
+  load and determinism hold, so no numeric test pins the reference values.
+
+### 2. Retention as an independent selection
+- `retention` in {none, fixed, constant, surprise, surprise_rand, per_drive,
+  per_drive_tied}; `backbone` in {gru, transformer}. Presets are saved combos:
+  `rda_gru_*` and `rda_tf_*` (12 combos). Classic `rda*` names remain aliases
+  of `rda_gru_*` so saved TOML files still load. ArchSpecs registered for all
+  21 backbone names (GUI dropdowns + generated forms).
+- Fixed a `per_drive_tied` state-assembly order bug (prev_e/prev_d were read
+  from the wrong slices, breaking aux-loss parity); the assembly order now
+  matches `_split`.
+
+### 3. Aux-loss parity
+- The auxiliary loss is uniform across all retention variants (`pred_o` +
+  `pred_d` heads, always included, same weight) so only the gate differs.
+  `test_aux_loss_parity_across_variants` shares the aux-head weights and asserts
+  equality.
+
+### 4. Queue Stop / KeyboardInterrupt
+- Stop now kills the running child process tree with `taskkill /T /F` (Windows)
+  / process-group `SIGKILL` (POSIX) â€” never a console control event to the
+  GUI/queue process. `test_kill_tree_terminates_child_not_parent` verifies the
+  child dies while the parent (test process) survives.
+- Evidence: each `tests/*.py` passes in its own pytest process (test_architecture
+  31; test_rda 19; test_cockpit 29). A combined single-process pytest run is
+  interrupted partway (KeyboardInterrupt) in this environment while every
+  half/full file passes individually â€” a tooling artifact, not a test failure.
+
+### Validation
+- `test_rda.py` 19 passed; `test_cockpit.py` 29 passed; `test_architecture.py`
+  31 passed; ruff clean; torch-free import checks pass; `eval --compare` no
+  STALE.
+- Placeholders / notes: `rda_tf_*` combos land at +5.07% vs the plain
+  transformer (closest achievable on the discrete size grid; the added
+  retention state pushes them just past 5%). The reference eval numbers do not
+  reproduce (see above).

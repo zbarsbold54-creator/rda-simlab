@@ -151,7 +151,7 @@ class ArchitectureWidget(QWidget):
         self.backbone = QComboBox()
         self.drive = QComboBox()
         self.fusion = QComboBox()
-        self.fusion.addItems(["concat", "film"])
+        self.fusion.addItems(["none", "concat", "film"])
         self.obs_mode = QComboBox()
         self.obs_mode.addItems(["obs_only", "obs_drives"])
         self.seed_box = QSpinBox()

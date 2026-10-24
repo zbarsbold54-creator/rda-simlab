@@ -99,10 +99,10 @@ class TorchPolicy:
         else:
             self._in_dim = int(data["in_dim"])
             self._with_drives = bool(data.get("with_drives", False))
-            self._fusion = "concat"
+            self._fusion = "none"
             hidden = int(data["hidden"])
             self._build_from_arch(
-                {"backbone": "gru", "hidden": hidden, "fusion": "concat"}
+                {"backbone": "gru_legacy", "hidden": hidden, "fusion": "none"}
             )
         self._backbone._net.load_state_dict(data["state_dict"])
         retention = getattr(self._backbone, "_retention", None)
@@ -292,7 +292,7 @@ def make_policy(cfg: dict[str, Any]) -> TorchPolicy:
     cfg = dict(cfg)
     target = cfg.get("match_params")
     if target is not None:
-        from simlab.training.backbones import match_params
+        from simlab.training.backbones import _is_recurrent, match_params
 
         backbone = cfg.get("backbone", "gru")
         obs_mode = cfg.get("obs_mode", "obs_only")
@@ -300,16 +300,7 @@ def make_policy(cfg: dict[str, Any]) -> TorchPolicy:
         with_drives = obs_mode == "obs_drives"
         dim = obs_dim(with_drives=with_drives) if fusion == "concat" else obs_dim()
         kwargs = dict(cfg.get("kwargs", {}))
-        recurrent = (
-            "gru",
-            "rda",
-            "rda_const",
-            "rda_g1",
-            "rda_g1_rand",
-            "rda_g3",
-            "rda_g3_tied",
-        )
-        if backbone in recurrent:
+        if _is_recurrent(backbone):
             kwargs.setdefault(
                 "hidden", match_params(int(target), backbone, dim, fusion=fusion)
             )

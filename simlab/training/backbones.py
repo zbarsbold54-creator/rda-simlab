@@ -136,6 +136,38 @@ class GRUBackbone(Backbone):
         }
 
 
+class LegacyGRUBackbone(GRUBackbone):
+    """The learner-v0 net exactly (hidden default 64, no FiLM, drive-free).
+
+    Structurally identical to ``GRUBackbone`` with ``fusion="none"`` at
+    ``hidden=64``; kept as a distinct registered preset so a *v0 checkpoint
+    loads into a named, documented entry point.
+    """
+
+    def __init__(
+        self,
+        obs_dim: int,
+        hidden: int = 64,
+        fusion: str = "none",
+        n_drives: int = MAX_N_DRIVES,
+        seed: int = 0,
+    ) -> None:
+        super().__init__(
+            obs_dim=obs_dim,
+            hidden=hidden,
+            fusion="none",
+            n_drives=n_drives,
+            seed=seed,
+        )
+        self.backbone_name = "gru_legacy"
+
+    def config_dict(self) -> dict[str, Any]:
+        cfg = super().config_dict()
+        cfg["backbone"] = "gru_legacy"
+        cfg["fusion"] = "none"
+        return cfg
+
+
 class _TransformerBlock(nn.Module):
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
@@ -439,27 +471,183 @@ class RDABackbone(Backbone):
         }
 
 
-_RDA_NAME_BY_MODE = {
-    "fixed": "rda",
-    "constant": "rda_const",
-    "surprise": "rda_g1",
-    "surprise_rand": "rda_g1_rand",
-    "per_drive": "rda_g3",
-    "per_drive_tied": "rda_g3_tied",
-}
+class RDATransformerBackbone(Backbone):
+    """Transformer encoder + retention, per-position FiLM on the tokens.
+
+    Reads ``d_t`` from the trailing drive dims of each observation (RDA
+    forces ``obs_drives``). ``E_t`` is carried in the recurrent state with the
+    token ring buffer. Fusion is ``film`` (per-token gains conditioned on
+    ``E_t``) or ``concat`` (``E_t`` appended before the heads).
+    """
+
+    def __init__(
+        self,
+        obs_dim: int,
+        context: int = 16,
+        d_model: int = 64,
+        n_heads: int = 4,
+        n_layers: int = 2,
+        fusion: str = "concat",
+        n_drives: int = MAX_N_DRIVES,
+        retention_mode: str = "fixed",
+        rho: float = 0.99,
+        baseline: float = 0.9,
+        gate_lambda_max: float = 0.9984375,
+        m_scale: float = 4.0,
+        surprise_loss_weight: float = 1.0,
+        trainable_gates: bool = False,
+        seed: int = 0,
+    ) -> None:
+        from simlab.training.retention import Retention
+
+        self.obs_dim = int(obs_dim)
+        self.context = int(context)
+        self.d_model = int(d_model)
+        self.n_heads = int(n_heads)
+        self.n_layers = int(n_layers)
+        self.fusion = fusion
+        self.n_drives = int(n_drives)
+        self.retention_mode = retention_mode
+        self.backbone_name = getattr(type(self), "_bb_name", "rda_tf")
+        self._retention = Retention(
+            mode=retention_mode,
+            n_drives=self.n_drives,
+            hidden=self.d_model,
+            rho=rho,
+            baseline=baseline,
+            gate_lambda_max=gate_lambda_max,
+            m_scale=m_scale,
+            surprise_loss_weight=surprise_loss_weight,
+            trainable_gates=trainable_gates,
+            seed=seed,
+        )
+        self._tokens = self.context * self.d_model
+        self.state_dim = self._tokens + self._retention.state_dim
+        self._last_metrics: dict[str, Any] = {}
+        self._aux_loss = torch.zeros(())
+        self._aux_scale = float(surprise_loss_weight)
+
+        net = nn.Module()
+        net.in_proj = nn.Linear(self.obs_dim - self.n_drives, self.d_model)
+        net.pos = nn.Parameter(torch.zeros(1, self.context, self.d_model))
+        net.blocks = nn.ModuleList(
+            [_TransformerBlock(self.d_model, self.n_heads) for _ in range(self.n_layers)]
+        )
+        head_in = self.d_model + (self.n_drives if fusion == "concat" else 0)
+        net.policy_head = nn.Linear(head_in, N_LOGITS)
+        net.value_head = nn.Linear(head_in, 1)
+        net.log_std_turn = nn.Parameter(torch.zeros(()))
+        net.log_std_thrust = nn.Parameter(torch.zeros(()))
+        if fusion == "film":
+            net.film_scale = nn.Linear(self.n_drives, self.d_model)
+            net.film_shift = nn.Linear(self.n_drives, self.d_model)
+        self._net = net
+
+    def initial_state(self, batch: int) -> torch.Tensor:
+        return torch.zeros((int(batch), self.state_dim))
+
+    def frame_step(self, x, h, drive=None):
+        net = self._net
+        b = x.shape[0]
+        d = x[:, -self.n_drives :]
+        o_raw = x[:, : -self.n_drives]
+        e = net.in_proj(o_raw)  # (B,d)
+        buf = h[:, : self._tokens].view(b, self.context, self.d_model)
+        rs = h[:, self._tokens :]
+
+        E, rs_next, metrics = self._retention.step(e, d, rs)
+        self._last_metrics = {"d": d.detach().cpu(), "E": E.detach().cpu()}
+        for k in ("lam", "m", "s"):
+            if k in metrics:
+                self._last_metrics[k] = metrics[k].detach().cpu()
+
+        if self.fusion == "film":
+            e = e * net.film_scale(E) + net.film_shift(E)
+            self._last_metrics["film_scale"] = net.film_scale.weight.detach().cpu()
+        buf = torch.cat([buf[:, 1:], e.unsqueeze(1)], dim=1)
+        emb = buf + net.pos
+        causal = torch.triu(
+            torch.full((self.context, self.context), float("-inf"), device=x.device),
+            diagonal=1,
+        )
+        out = emb
+        for block in net.blocks:
+            attn_out, _ = block.attn(out, out, out, attn_mask=causal)
+            out = block.ln1(out + attn_out)
+            out = block.ln2(out + block.ff(out))
+        last = out[:, -1]
+        if self.fusion == "concat":
+            last = torch.cat([last, E], dim=1)
+        a = net.policy_head(last)
+        v = net.value_head(last).squeeze(-1)
+        h_next = torch.cat([buf.contiguous().view(b, self._tokens), rs_next], dim=1)
+        self._aux_loss = self._aux_loss + metrics.get("aux_loss", torch.zeros(()))
+        return a, v, h_next
+
+    def aux_loss(self) -> torch.Tensor:
+        return self._aux_scale * self._aux_loss
+
+    def reset_aux(self) -> None:
+        self._aux_loss = torch.zeros(())
+
+    def introspect(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for k, v in self._last_metrics.items():
+            if hasattr(v, "detach"):
+                out[k] = v.detach().cpu().numpy()
+            else:
+                out[k] = v
+        if "E" in out:
+            out["E_norm"] = float(self._last_metrics["E"].norm().item())
+        return out
+
+    def param_count(self) -> int:
+        return _param_count(self._net) + _param_count(self._retention)
+
+    def config_dict(self) -> dict[str, Any]:
+        return {
+            "backbone": self.backbone_name,
+            "retention_mode": self.retention_mode,
+            "context": self.context,
+            "d_model": self.d_model,
+            "n_heads": self.n_heads,
+            "n_layers": self.n_layers,
+            "fusion": self.fusion,
+            "n_drives": self.n_drives,
+            "rho": self._retention.rho,
+            "baseline": self._retention.baseline,
+            "gate_lambda_max": self._retention.gate_lambda_max,
+            "m_scale": self._retention.m_scale,
+            "surprise_loss_weight": self._retention.surprise_loss_weight,
+            "trainable_gates": self._retention.trainable_gates,
+        }
 
 
-def _rda_cls(retention_mode: str):
+RETENTION_MODES = (
+    "fixed",
+    "constant",
+    "surprise",
+    "surprise_rand",
+    "per_drive",
+    "per_drive_tied",
+)
+
+
+def _combo_name(kind: str, mode: str) -> str:
+    return f"rda_{kind}_{mode}"
+
+
+def _rda_cls(base: type, kind: str, retention_mode: str):
     def _init(self, *args: Any, **kwargs: Any) -> None:
         kwargs.setdefault("retention_mode", retention_mode)
-        RDABackbone.__init__(self, *args, **kwargs)
+        base.__init__(self, *args, **kwargs)
 
     return type(
-        f"RDABackbone_{retention_mode}",
-        (RDABackbone,),
+        f"{base.__name__}_{retention_mode}",
+        (base,),
         {
             "__init__": _init,
-            "_bb_name": _RDA_NAME_BY_MODE[retention_mode],
+            "_bb_name": _combo_name(kind, retention_mode),
         },
     )
 
@@ -467,13 +655,30 @@ def _rda_cls(retention_mode: str):
 BACKBONES: dict[str, type[Backbone]] = {
     "gru": GRUBackbone,
     "transformer": TransformerBackbone,
-    "rda": _rda_cls("fixed"),
-    "rda_const": _rda_cls("constant"),
-    "rda_g1": _rda_cls("surprise"),
-    "rda_g1_rand": _rda_cls("surprise_rand"),
-    "rda_g3": _rda_cls("per_drive"),
-    "rda_g3_tied": _rda_cls("per_drive_tied"),
+    "gru_legacy": LegacyGRUBackbone,
 }
+
+for _mode in RETENTION_MODES:
+    BACKBONES[_combo_name("gru", _mode)] = _rda_cls(RDABackbone, "gru", _mode)
+    BACKBONES[_combo_name("tf", _mode)] = _rda_cls(
+        RDATransformerBackbone, "tf", _mode
+    )
+
+# Legacy aliases -> the rda_gru_* combos (keeps saved TOML loading).
+_RDA_ALIASES = {
+    "rda": _combo_name("gru", "fixed"),
+    "rda_const": _combo_name("gru", "constant"),
+    "rda_g1": _combo_name("gru", "surprise"),
+    "rda_g1_rand": _combo_name("gru", "surprise_rand"),
+    "rda_g3": _combo_name("gru", "per_drive"),
+    "rda_g3_tied": _combo_name("gru", "per_drive_tied"),
+}
+for _alias, _target in _RDA_ALIASES.items():
+    BACKBONES[_alias] = BACKBONES[_target]
+
+
+def _is_recurrent(backbone: str) -> bool:
+    return not (backbone == "transformer" or backbone.startswith("rda_tf"))
 
 
 def match_params(
@@ -489,10 +694,8 @@ def match_params(
     cls = BACKBONES[backbone]
     target = int(target)
     best: tuple[int, int] | None = None
-    _recurrent = ("gru", "rda", "rda_const", "rda_g1", "rda_g1_rand",
-                  "rda_g3", "rda_g3_tied")
     for size in range(32, 1025, 16):
-        if backbone in _recurrent:
+        if _is_recurrent(backbone):
             bb = cls(obs_dim=obs_dim, hidden=size, fusion=fusion, n_drives=n_drives)
         else:
             bb = cls(

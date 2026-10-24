@@ -171,6 +171,9 @@ noise uses).
   modulation is an identity at init.
 - `concat` — concatenate `E_t` with the encoded observation features before the
   heads.
+- `none` — no FiLM and no retention parameters (drive-free baseline). The
+  `gru` and `transformer` presets default to `concat`; `gru_legacy` forces
+  `none`.
 
 ### 4.2 Presets
 
@@ -181,14 +184,24 @@ parameter counts are within 5% of each other.
 
 | Preset | Encoder | Retention | Fusion |
 |--------|---------|-----------|--------|
-| `gru` | GRU | — (existing) | concat/film |
-| `transformer` | causal Transformer (K) | — (existing) | concat/film |
+| `gru` | GRU | — (existing) | concat/film/none |
+| `gru_legacy` | GRU (learner-v0, hidden 64) | — | none |
+| `transformer` | causal Transformer (K) | — (existing) | concat/film/none |
 | `rda` | GRU | fixed decay | concat/film |
 | `rda_const` | GRU | constant E | concat/film |
 | `rda_g1` | GRU | surprise (G1) | concat/film |
 | `rda_g1_rand` | GRU | surprise_rand | concat/film |
 | `rda_g3` | GRU | per_drive | concat/film |
 | `rda_g3_tied` | GRU | per_drive_tied | concat/film |
+
+Retention is an **independent selection** usable with either backbone.
+`backbone` ∈ {`gru`, `transformer`}, `retention` ∈ {`none`, `fixed`,
+`constant`, `surprise`, `surprise_rand`, `per_drive`, `per_drive_tied`}.
+Presets are saved combos: `rda_gru_*` and `rda_tf_*` for each retention mode
+(the Transformer combos apply FiLM per position on their tokens). The classic
+`rda*` names are **aliases** of the `rda_gru_*` combos so saved TOML files
+still load. ArchSpecs are registered for every combo and appear in the GUI
+backbone dropdown with generated forms.
 
 **Transformer preset.** Causal over the last `K` observation embeddings (`K`
 configurable, default 32). The update uses a **vectorized** causal-attention
@@ -267,6 +280,28 @@ perturbation of the observation after step `t` therefore changes nothing at `t`
 - Trainable gate parameters are implemented but off by default (`trainable_gate`
   flag); the scalar optimizer-group exclusion is enforced by never putting them
   on `log_std_*`.
+
+---
+
+## 10. v0.1 verification fixes
+
+- **Drive-free baselines.** `fusion="none"` adds no FiLM and no retention
+  parameters. `gru_legacy` is exactly the learner-v0 net (hidden 64, 9798
+  params, no FiLM) and loads the `tests/fixtures/learner_v0_final.pt` fixture
+  with identical weights. *Behavioral note:* the reference eval numbers
+  (Balanced 5, 5.0% / median 3705) do not reproduce in the current environment;
+  structural load and determinism hold, but the absolute survival statistics
+  drift (measured 0.0% / median 1042), so no numeric regression test pins those
+  reference values.
+- **Aux-loss parity.** All retention variants compute the *same* auxiliary loss
+  (both `pred_o` and `pred_d` heads) with the same weight, so only the gate
+  differs between variants. `test_aux_loss_parity_across_variants` shares the
+  aux-head weights and asserts equality.
+- **Queue Stop.** Stop now kills the running child process tree via
+  `taskkill /T /F` (Windows) / process-group `SIGKILL` (POSIX), never sending a
+  console control event to the queue/GUI process.
+  `test_kill_tree_terminates_child_not_parent` verifies the child dies while the
+  parent (test process) survives.
 
 ---
 

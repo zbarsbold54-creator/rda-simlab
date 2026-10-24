@@ -105,14 +105,16 @@ class Retention(nn.Module):
     @property
     def state_dim(self) -> int:
         mode = self.mode
+        n = self.n_drives
+        h = self.hidden
         if mode in ("fixed", "constant"):
-            return self.n_drives
+            return n + h + n
         if mode in ("surprise", "surprise_rand"):
-            return self.n_drives + 1 + self.hidden
+            return n + 1 + h + n
         if mode == "per_drive_tied":
-            return self.n_drives * 3 + self.hidden + 1
+            return n * 3 + h + 1
         # per_drive
-        return self.n_drives * 3 + self.hidden
+        return n * 3 + h
 
     def initial_state(self, batch: int) -> torch.Tensor:
         return torch.zeros((int(batch), self.state_dim))
@@ -123,12 +125,17 @@ class Retention(nn.Module):
         n = self.n_drives
         h = self.hidden
         if mode in ("fixed", "constant"):
-            return {"E": rs[:, :n]}
+            return {
+                "E": rs[:, :n],
+                "prev_e": rs[:, n : n + h],
+                "prev_d": rs[:, n + h : n + h + n],
+            }
         if mode in ("surprise", "surprise_rand"):
             return {
                 "E": rs[:, :n],
                 "m": rs[:, n : n + 1],
                 "prev_e": rs[:, n + 1 : n + 1 + h],
+                "prev_d": rs[:, n + 1 + h : n + 1 + h + n],
             }
         if mode == "per_drive_tied":
             return {
@@ -200,13 +207,27 @@ class Retention(nn.Module):
         dev = o_emb.device
         parts = self._split(rs)
         E = parts["E"]
+        prev_e = parts["prev_e"]
+        prev_d = parts["prev_d"]
         metrics: dict[str, torch.Tensor] = {}
-        aux_loss = torch.zeros((), device=dev)
+
+        # Uniform auxiliary-head loss across ALL variants (only the gate
+        # differs). pred_o predicts the observation embedding, pred_d predicts
+        # the drive vector; both share the same weight in every mode.
+        pred_o_err = self._base.pred_o(prev_e) - o_emb  # (B,h)
+        pred_d_err = self._base.pred_d(prev_d) - d  # (B,n)
+        aux_loss = self.surprise_loss_weight * (
+            torch.mean(pred_o_err**2) + torch.mean(pred_d_err**2)
+        )
+        metrics["aux_loss"] = aux_loss
+
+        next_prev = {"prev_e": o_emb.detach(), "prev_d": d.detach()}
 
         if mode == "constant":
             E_next = self._base.e_const.expand(B, n)
-            rs_next = rs
-            metrics.update({"lam": torch.zeros((B, n), device=dev)})
+            lam = torch.zeros((B, n), device=dev)
+            rs_next = self._assemble({"E": E_next, **next_prev})
+            metrics.update({"lam": lam, "E": E_next})
             return E_next, rs_next, metrics
 
         if mode == "fixed":
@@ -216,20 +237,16 @@ class Retention(nn.Module):
             else:
                 lam = lam.expand(B, n)
             E_next = lam * E + (1.0 - lam) * d
-            rs_next = self._assemble({"E": E_next})
+            rs_next = self._assemble({"E": E_next, **next_prev})
             metrics.update({"lam": lam, "E": E_next})
             return E_next, rs_next, metrics
 
-        # --- surprise-family modes
-        prev_e = parts["prev_e"]
-        m_prev = parts["m"]
-
+        # --- surprise-family modes (shared G1 gate)
         if mode in ("surprise", "surprise_rand"):
-            # shared G1 gate
+            m_prev = parts["m"]
             s_raw = (
                 (self._base.pred_o(prev_e) - o_emb).norm(dim=1, keepdim=True)
             )  # (B,1)
-            # running normalize with stop-gradient
             s_raw_d = s_raw.detach()
             if training:
                 self.s_mean = self._ema(self.s_mean, s_raw_d.mean())
@@ -239,27 +256,23 @@ class Retention(nn.Module):
             m = self.rho * m_prev + s
             lam = self._lam_from_m(m_prev)  # uses m_{t-1}
             E_next = lam * E + (1.0 - lam) * d
-            aux_loss = self.surprise_loss_weight * torch.mean(
-                (s_raw - self._base.pred_o(prev_e).detach()) ** 2
-            )
             rs_next = self._assemble(
-                {"E": E_next, "m": m, "prev_e": o_emb.detach()}
+                {"E": E_next, "m": m, **next_prev}
             )
             metrics.update({"lam": lam, "m": m, "s": s, "E": E_next})
-            metrics["aux_loss"] = aux_loss
             if mode == "surprise_rand":
                 lam_s = self._sample_hist(B, dev)
                 if training:
                     self._update_hist(lam)
                 E_next = lam_s * E + (1.0 - lam_s) * d
                 rs_next = self._assemble(
-                    {"E": E_next, "m": m, "prev_e": o_emb.detach()}
+                    {"E": E_next, "m": m, **next_prev}
                 )
-                metrics.update({"lam": lam_s.expand(B, n), "m": m, "s": s})
+                metrics.update({"lam": lam_s.expand(B, n), "m": m, "s": s, "E": E_next})
             return E_next, rs_next, metrics
 
         # --- per-drive G3 (untied / tied to shared G1)
-        prev_d = parts["prev_d"]
+        m_prev = parts["m"]
         d_pred = self._base.pred_d(prev_d)  # (B,n)
         d_err = (d_pred - d).abs()
         d_err_d = d_err.detach()
@@ -275,8 +288,6 @@ class Retention(nn.Module):
         m = self.rho * m_prev + s
 
         if mode == "per_drive_tied":
-            # per gate to the shared G1 trace (m_g); per-drive m still kept for
-            # introspection and the per-drive predictive auxiliary loss.
             s_raw = (
                 (self._base.pred_o(prev_e) - o_emb).norm(dim=1, keepdim=True)
             )
@@ -289,38 +300,19 @@ class Retention(nn.Module):
             m_g_prev = parts["m_g"]
             m_g = self.rho * m_g_prev + s_g
             lam = self._lam_from_m(m_g_prev).expand(B, n)
-            aux_loss = self.surprise_loss_weight * torch.mean(
-                (s_raw - self._base.pred_o(prev_e).detach()) ** 2
-            )
             E_next = lam * E + (1.0 - lam) * d
             rs_next = self._assemble(
-                {
-                    "E": E_next,
-                    "m": m,
-                    "prev_e": o_emb.detach(),
-                    "prev_d": d.detach(),
-                    "m_g": m_g,
-                }
+                {"E": E_next, "m": m, **next_prev, "m_g": m_g}
             )
             metrics.update(
                 {"lam": lam, "m": m, "s": s, "m_g": m_g, "E": E_next}
             )
-            metrics["aux_loss"] = aux_loss
             return E_next, rs_next, metrics
 
         lam = self._lam_from_m(m_prev)
         E_next = lam * E + (1.0 - lam) * d
-        aux_loss = self.surprise_loss_weight * torch.mean(d_err**2)
-        rs_next = self._assemble(
-            {
-                "E": E_next,
-                "m": m,
-                "prev_e": o_emb.detach(),
-                "prev_d": d.detach(),
-            }
-        )
+        rs_next = self._assemble({"E": E_next, "m": m, **next_prev})
         metrics.update({"lam": lam, "m": m, "s": s, "E": E_next})
-        metrics["aux_loss"] = aux_loss
         return E_next, rs_next, metrics
 
     def _ema(

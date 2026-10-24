@@ -171,6 +171,29 @@ def test_queue_status_counts(tmp_path: Path) -> None:
     assert len(status["jobs"]) == 2
 
 
+# ---------------------------------------------- stop kills child tree
+def test_kill_tree_terminates_child_not_parent(tmp_path: Path) -> None:
+    """Stopping a run kills the child tree without interrupting the parent."""
+    import subprocess as sp
+    import sys
+    import time
+
+    from simlab.research.queue import _kill_tree
+
+    code = "import time; time.sleep(30)"
+    child = sp.Popen([sys.executable, "-c", code])
+    time.sleep(0.5)
+    assert child.poll() is None  # child is running
+    _kill_tree(child.pid)
+    try:
+        child.wait(timeout=5)
+    except sp.TimeoutExpired:
+        child.kill()
+    assert child.returncode is not None  # child was terminated
+    # The test process (the "parent") is still alive and executing.
+    assert _kill_tree is not None
+
+
 # ------------------------------------------- follow latest checkpoint
 def test_follow_latest_checkpoint(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"

@@ -34,7 +34,7 @@ MIN_SEEDS_PER_ARM = 3
 DEV_SEED_RANGE = (0, 19)
 TEST_SEED_RANGE = (1000, 1019)
 VALID_SCENARIOS = ("balanced", "hard", "solo")
-FUSION_CHOICES = ("concat", "film")
+FUSION_CHOICES = ("none", "concat", "film")
 OBS_CHOICES = ("obs_only", "obs_drives")
 
 

@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -195,7 +196,8 @@ class QueueManager:
     ) -> int:
         """Serve the queue until all jobs finish or stop is requested."""
         self.acquire_lock()
-        runner = runner or _default_runner
+        if runner is None:
+            runner = lambda job, exp: _default_runner(self.dir, job, exp)
         try:
             exp = self.load_experiment()
             jobs = self._reconcile(self.load_jobs())
@@ -293,7 +295,27 @@ def _git_head() -> str:
     return "unknown"
 
 
-def _default_runner(job: Job, exp: Experiment) -> int:
+def _kill_tree(pid: int) -> None:
+    """Kill a process tree without sending a console control event to the caller.
+
+    On Windows, ``taskkill /T /F`` targets the child tree by PID and does not
+    deliver a CTRL_C_EVENT to the queue/GUI process's console. Elsewhere, the
+    process group is signaled directly.
+    """
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            capture_output=True,
+            check=False,
+        )
+    else:
+        try:
+            os.killpg(os.getpgid(pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+
+def _default_runner(queue_dir: str | Path, job: Job, exp: Experiment) -> int:
     from simlab.training.arch_spec import dump_arch_toml
 
     arm = next(a for a in exp.arms if a.name == job.arm_name)
@@ -320,7 +342,13 @@ def _default_runner(job: Job, exp: Experiment) -> int:
         "--out",
         str(out_dir),
     ]
-    proc = subprocess.run(args, check=False)
+    proc = subprocess.Popen(args)
+    while proc.poll() is None:
+        if has_flag(queue_dir, STOP_FLAG):
+            _kill_tree(proc.pid)
+            proc.wait()
+            return -1
+        time.sleep(0.25)
     return int(proc.returncode)
 
 
