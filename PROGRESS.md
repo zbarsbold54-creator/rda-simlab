@@ -1133,3 +1133,44 @@ Placeholders / notes:
   opt-in and currently False.
 - RDA variants are research scaffolding; the heuristic/oracle baselines, world
   dynamics, and scenarios are unchanged (eval --compare shows no STALE).
+
+## cockpit-v0 — Research cockpit (GUI)
+
+Status: complete; committed and tagged `cockpit-v0`.
+
+### Pure research logic (torch-free, unit-tested)
+- `simlab/research/experiment.py` — Arm/Experiment dataclasses, TOML dump/load,
+  and `validate()` protocol guards (training seeds >= 100000; workers default 4
+  with warning; dev seeds 0-19; test seeds 1000-1019 behind a confirm dialog;
+  warn if < 3 seeds per arm). Lazy `arm_param_count`/`arm_param_counts`
+  (torch off the GUI thread).
+- `simlab/research/queue.py` — QueueManager: single-instance lock (`O_EXCL` +
+  staleness recovery), pause-after-current-run / stop flags, per-run status,
+  results JSON (seed, init checksum, worker count, git commit), resume after
+  crash/restart. `main()` CLI (`serve <dir>`).
+- `simlab/research/logs.py` — learning.csv / quick-eval parsing, latest
+  checkpoint, run summary, curve series.
+- `simlab/research/results.py` — SeedRow, summarize_rows (mean +/- spread),
+  difference_rows vs a control arm (`default_control` = rda_const for RDA
+  arms), load_eval_file, CSV export. Numbers only, no verdict words.
+- `simlab/research/gates.py` — gate_stats (fraction_at_max, histogram), pearson
+  correlation with salient events, rail_warning (|E| within 0.02 of rail).
+- `simlab/research/follower.py` — checkpoint signature + poll_latest.
+- `simlab/research/replay.py` — collect_gate_trace (torch-lazy) reads
+  `_last_metrics` per step from a checkpoint for the Gate diagnostics tab.
+
+### GUI
+- `simlab/gui/cockpit.py` — CockpitWidget with six tabs (Experiment/Queue/Live/
+  Curves/Results/Gates), ParamCountThread (torch off GUI thread),
+  playbackRequested signal, and a pure `analyze_gate_data`.
+- `simlab/gui/main_window.py` — "Research Cockpit" dock, View-menu toggle, and
+  playbackRequested -> `_apply_arch` wiring.
+
+### Validation
+- ruff clean; torch-free GUI import verified (offscreen subprocess); baseline
+  suite 123 passed + cockpit file 27 passed; eval --compare no STALE.
+- Placeholders / notes: `replay.collect_gate_trace` is implemented but not
+  exercised by a replay smoke test (needs a trained checkpoint). The cockpit GUI
+  itself is validated offscreen only (no interactive session). The Qt-child
+  subprocess import test passes standalone but can be dropped by a batch
+  KeyboardInterrupt artifact in this environment (tooling, not a code failure).

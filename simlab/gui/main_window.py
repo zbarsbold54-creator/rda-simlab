@@ -23,6 +23,7 @@ from simlab.core.config import load_config
 from simlab.core.types import Snapshot
 from simlab.gui import theme
 from simlab.gui.architecture import ArchitectureWidget
+from simlab.gui.cockpit import CockpitWidget
 from simlab.gui.drive_plot import DrivePlotWidget
 from simlab.gui.frame import SimulationFrame
 from simlab.gui.inspector import InspectorWidget
@@ -85,6 +86,11 @@ class MainWindow(QMainWindow):
         self.plot_dock = QDockWidget("Drives and Timeline", self)
         self.plot_dock.setWidget(self.drive_plot)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock)
+        self.cockpit = CockpitWidget(config)
+        self.cockpit_dock = QDockWidget("Research Cockpit", self)
+        self.cockpit_dock.setWidget(self.cockpit)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.cockpit_dock)
+        self.cockpit_dock.hide()
         self.scenario_dock.setMinimumWidth(theme.INSPECTOR_WIDTH)
         self.inspector_dock.setMinimumWidth(theme.INSPECTOR_WIDTH)
         self.plot_dock.setMinimumHeight(theme.PLOT_HEIGHT)
@@ -114,6 +120,7 @@ class MainWindow(QMainWindow):
         self.world_view.agentSelected.connect(self._select_agent)
         self.scenario.applyRequested.connect(self._apply_scenario)
         self.arch.playbackRequested.connect(self._apply_arch)
+        self.cockpit.playbackRequested.connect(self._apply_arch)
         self.drive_plot.timelineChanged.connect(self._seek_timeline)
         self.session_toolbar.follow.toggled.connect(self.world_view.set_follow_selected)
         for name, checkbox in self.session_toolbar.overlay_checks.items():
@@ -122,6 +129,11 @@ class MainWindow(QMainWindow):
                     overlay, enabled
                 )
             )
+        view_menu = self.menuBar().addMenu("&View")
+        self._show_cockpit_action = view_menu.addAction(
+            "Research Cockpit", self._toggle_cockpit
+        )
+        self._show_cockpit_action.setCheckable(True)
         self._timer = QTimer(self)
         self._timer.setInterval(theme.TIMER_INTERVAL_MS)
         self._timer.timeout.connect(self._render_latest)
@@ -195,6 +207,9 @@ class MainWindow(QMainWindow):
         self._frame_history.clear()
         self._snapshot_history.clear()
         self.worker.request_scenario(self._seed, config)
+
+    def _toggle_cockpit(self, visible: bool) -> None:
+        self.cockpit_dock.setVisible(visible)
 
     def _apply_arch(self, config) -> None:
         self._config = config

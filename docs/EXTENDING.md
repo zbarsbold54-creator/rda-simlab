@@ -78,14 +78,24 @@ policy.save_checkpoint("logs/my_arch/final.pt")  # stores the arch config
 
 Checkpoints store the architecture config; loading one rebuilds the backbone from
 the stored config. Built-in backbones: `gru` (legacy GRU), `transformer` (causal
-ring buffer), `rda` (stub — supply your own through the slot). Built-in drive
-cores: `none`, `constant`, `rda8`. Eval the resulting policy with
+ring buffer), and the RDA presets `rda`, `rda_const`, `rda_g1`,
+`rda_g1_rand`, `rda_g3`, `rda_g3_tied` (see `docs/RDA_SIM.md`). Built-in drive
+cores: `none`, `constant`, `instant`, `rda8`. Eval the resulting policy with
 `simlab.cli eval --policy learned_torch --checkpoint logs/my_arch/final.pt`; the
 eval table prints `param_count` per config.
 
 ## Add a retention rule
 
-A retention rule implements `step(previous, drives, context)` and returns a drive array of the same shape:
+Retention rules live in the learner side (`simlab/training/retention.py`) and
+implement the shared recurrence `E_t = lam_t * E_{t-1} + (1 - lam_t) * d_t`.
+A new variant is a class with `step`/`initial_state` methods plus a `config`
+dataclass; register it in the `RETENTION` registry in `retention.py` and add a
+preset mapping in `backbones.py` (`BACKBONES`) so it appears in the GUI's
+backbone dropdown with a generated form. See `docs/RDA_SIM.md` §3 for the
+surprise (G1), control (`surprise_rand`), and per-drive (G3) variants, their
+gate-timing rules, and the past-only rule that must be preserved.
+
+The legacy plugin registration path is retained for world-side rules:
 
 ```python
 from simlab.core.registry import register
@@ -97,7 +107,15 @@ class FastDecay:
         return 0.5 * previous + 0.5 * drives
 ```
 
-This registers the rule for discovery by name. Retention selection is not currently wired into GUI drive construction; the configured retention option is groundwork for that integration.
+## Add a drive definition
+
+The eight world-side drives are defined in `simlab/drives/definitions.py` — one
+file, one entry per drive, each with a `name`, `label`, `docstring`, and a pure
+numpy `compute(obs, last_rays)` returning a value in `[0, 1]`. Add a new drive to
+`DRIVE_NAMES` (append at the end; the order is the fixed `obs_drives` encoding)
+and provide its `compute`. `InstantDriveCore` picks it up automatically, and the
+inspector renders it. Drive labels are current **PLACEHOLDER** strings you can
+edit in place without touching any other file.
 
 ## Add an architecture and see it in the GUI
 

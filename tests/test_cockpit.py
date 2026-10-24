@@ -1,0 +1,403 @@
+"""Offscreen tests for the Research cockpit logic.
+
+Covers experiment-builder protocol guards, queue resume, follow-latest
+checkpoint, results aggregation/differences, gate diagnostics helpers, the
+torch-free GUI import guarantee, and (guarded) parameter counts.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pytest
+
+from simlab.research.experiment import (
+    DEFAULT_WORKERS,
+    TRAIN_SEED_MIN,
+    Arm,
+    Experiment,
+    arm_param_count,
+    arm_param_counts,
+    dump_experiment_toml,
+    load_experiment_toml,
+)
+from simlab.research.follower import FollowState, poll_latest
+from simlab.research.gates import correlate_events, gate_stats, rail_warning
+from simlab.research.logs import latest_checkpoint, parse_learning_csv, parse_quick_eval
+from simlab.research.queue import QueueLockError, QueueManager
+from simlab.research.results import (
+    SeedRow,
+    default_control,
+    difference_rows,
+    load_eval_file,
+    rows_from_seed_results,
+    summarize_rows,
+    to_csv,
+)
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+def _torch_available() -> bool:
+    try:
+        import torch  # noqa: F401
+
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _make_experiment(**overrides: Any) -> Experiment:
+    defaults: dict[str, Any] = {
+        "name": "test_grid",
+        "arms": [Arm(name="rda_g1", backbone="rda_g1")],
+        "workers": DEFAULT_WORKERS,
+        "train_seeds": [TRAIN_SEED_MIN],
+        "dev_seeds": [0, 1, 2, 3, 4],
+    }
+    defaults.update(overrides)
+    return Experiment(**defaults)
+
+
+# ------------------------------------------------------ protocol guards
+def test_experiment_valid_no_errors() -> None:
+    exp = _make_experiment()
+    errors, warnings = exp.validate()
+    assert errors == []
+    assert warnings == []
+
+
+def test_train_seed_below_floor_is_error() -> None:
+    exp = _make_experiment(train_seeds=[99999])
+    errors, _ = exp.validate()
+    assert any("100000" in e for e in errors)
+
+
+def test_workers_not_pinned_warns() -> None:
+    exp = _make_experiment(workers=8)
+    errors, warnings = exp.validate()
+    assert errors == []
+    assert any("workers" in w and "4" in w for w in warnings)
+
+
+def test_dev_seed_out_of_range_is_error() -> None:
+    exp = _make_experiment(dev_seeds=[42])
+    errors, _ = exp.validate()
+    assert any("dev seed" in e for e in errors)
+
+
+def test_test_seeds_require_confirm() -> None:
+    exp = _make_experiment(test_seeds=[1000, 1001, 1002])
+    assert exp.requires_test_confirm() is True
+    errors, _ = exp.validate()
+    assert errors == []
+
+
+def test_fewer_than_3_seeds_warns() -> None:
+    exp = _make_experiment(dev_seeds=[0, 1])
+    errors, warnings = exp.validate()
+    assert errors == []
+    assert any("3" in w for w in warnings)
+
+
+def test_unknown_backbone_is_error() -> None:
+    exp = _make_experiment(arms=[Arm(name="x", backbone="does_not_exist")])
+    errors, _ = exp.validate()
+    assert any("unknown backbone" in e for e in errors)
+
+
+def test_toml_round_trip() -> None:
+    exp = _make_experiment(test_seeds=[1000, 1001, 1002], control_arm="rda_g1")
+    text = dump_experiment_toml(exp)
+    tmp = REPO / "runs" / "test_roundtrip.toml"
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_text(text, encoding="utf-8")
+    loaded = load_experiment_toml(tmp)
+    tmp.unlink(missing_ok=True)
+    assert loaded.name == exp.name
+    assert loaded.arms[0].backbone == "rda_g1"
+    assert loaded.test_seeds == [1000, 1001, 1002]
+    assert loaded.control_arm == "rda_g1"
+
+
+# ------------------------------------------------------- queue resume
+def test_queue_resume_reconciles_crashed_job(tmp_path: Path) -> None:
+    exp = _make_experiment(train_seeds=[TRAIN_SEED_MIN, TRAIN_SEED_MIN + 1])
+    qdir = tmp_path / "q"
+    QueueManager.create(qdir, exp)
+    # Simulate a crash: mark the first job running with a dead pid.
+    jobs = QueueManager(qdir).load_jobs()
+    jobs[0].status = "running"
+    jobs[0].pid = 999_999_999  # certainly not alive
+    QueueManager(qdir).save_jobs(jobs)
+
+    ran: list[str] = []
+
+    def fake(runner_job, runner_exp) -> int:
+        ran.append(runner_job.id)
+        return 0
+
+    QueueManager(qdir).run_forever(runner=fake)
+    assert len(ran) == 2
+    final = QueueManager(qdir).load_jobs()
+    assert all(j.status == "done" for j in final)
+
+
+def test_queue_lock_blocks_second_server(tmp_path: Path) -> None:
+    exp = _make_experiment()
+    qdir = tmp_path / "qlock"
+    QueueManager.create(qdir, exp)
+    mgr = QueueManager(qdir)
+    mgr.acquire_lock()
+    try:
+        with pytest.raises(QueueLockError):
+            QueueManager(qdir).acquire_lock()
+    finally:
+        mgr.release_lock()
+
+
+def test_queue_status_counts(tmp_path: Path) -> None:
+    exp = _make_experiment(train_seeds=[TRAIN_SEED_MIN, TRAIN_SEED_MIN + 1])
+    qdir = tmp_path / "qstatus"
+    QueueManager.create(qdir, exp)
+    status = QueueManager(qdir).status()
+    assert status["counts"]["queued"] == 2
+    assert len(status["jobs"]) == 2
+
+
+# ------------------------------------------- follow latest checkpoint
+def test_follow_latest_checkpoint(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    ckpt = run_dir / "latest.pt"
+    ckpt.write_bytes(b"one")
+    state = FollowState()
+    first = poll_latest(run_dir, state)
+    assert first == ckpt
+    second = poll_latest(run_dir, state)
+    assert second is None
+    # touching the file makes it "new" again
+    ckpt.write_bytes(b"two")
+    third = poll_latest(run_dir, state)
+    assert third == ckpt
+
+
+def test_latest_checkpoint_name_preference(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "latest.pt").write_bytes(b"a")
+    (run_dir / "final.pt").write_bytes(b"b")
+    ckpt = latest_checkpoint(run_dir)
+    assert ckpt.name == "latest.pt"
+
+
+# ------------------------------------------------------- logs parsing
+def test_parse_learning_csv_and_quick_eval(tmp_path: Path) -> None:
+    learn = tmp_path / "learning.csv"
+    learn.write_text(
+        "iteration,env_steps,mean_episode_len,mean_return,entropy,approx_kl,value_loss\n"
+        "0,1024,105.0,12.5,1.1,0.01,0.2\n"
+        "# quick_eval it=0 cap_pct=62.5\n"
+        "1,2048,107.0,13.1,1.05,0.012,0.19\n"
+        "# quick_eval it=1 cap_pct=70.0\n",
+        encoding="utf-8",
+    )
+    rows = parse_learning_csv(learn)
+    assert len(rows) == 2
+    assert rows[1]["mean_return"] == 13.1
+    evals = parse_quick_eval(learn)
+    assert evals == [(0, 62.5), (1, 70.0)]
+
+
+# ------------------------------------------------------- results
+def test_rows_from_seed_results_aggregation() -> None:
+    results = [
+        {
+            "seed": 0,
+            "per_agent": [
+                {
+                    "class": "truncation",
+                    "death_step": 200,
+                    "food_eaten": 3,
+                    "hazard_contacts": 1,
+                },
+                {
+                    "class": "starvation",
+                    "death_step": 90,
+                    "food_eaten": 1,
+                    "hazard_contacts": 0,
+                },
+            ],
+        }
+    ]
+    rows = rows_from_seed_results(results)
+    assert len(rows) == 1
+    assert rows[0].seed == 0
+    assert rows[0].trunc == 1
+    assert rows[0].starve == 1
+    assert rows[0].cap_pct == 50.0
+    assert rows[0].median_survival == 145.0
+
+
+def test_summarize_rows_mean_spread() -> None:
+    rows = [
+        SeedRow(
+            seed=0, cap_pct=50.0, median_survival=100.0, starve=1, hazard=0, trunc=1
+        ),
+        SeedRow(
+            seed=1, cap_pct=70.0, median_survival=120.0, starve=0, hazard=0, trunc=2
+        ),
+        SeedRow(
+            seed=2, cap_pct=90.0, median_survival=160.0, starve=0, hazard=1, trunc=3
+        ),
+    ]
+    summary = summarize_rows(rows)
+    mean, spread = summary["cap_pct"]
+    assert mean == 70.0
+    assert spread == pytest.approx(16.33, abs=0.02)
+
+
+def test_difference_rows_vs_control() -> None:
+    arm = [
+        SeedRow(
+            seed=0, cap_pct=70.0, median_survival=120.0, starve=0, hazard=0, trunc=5
+        )
+    ]
+    control = [
+        SeedRow(
+            seed=0, cap_pct=50.0, median_survival=100.0, starve=1, hazard=0, trunc=2
+        )
+    ]
+    diffs = difference_rows(arm, control)
+    assert diffs[0]["cap_pct"] == 20.0
+    assert diffs[0]["median_survival"] == 20.0
+
+
+def test_missing_control_marked() -> None:
+    arm = [
+        SeedRow(
+            seed=0, cap_pct=70.0, median_survival=120.0, starve=0, hazard=0, trunc=5
+        )
+    ]
+    diff = difference_rows(arm, [])[0]
+    assert diff.get("missing_control") is True
+
+
+def test_default_control_for_rda() -> None:
+    assert default_control("rda_g1") == "rda_const"
+    assert default_control("rda_const") is None
+    assert default_control("gru") is None
+
+
+def test_to_csv_includes_diff_block() -> None:
+    arm_rows = {
+        "rda_g1": [
+            SeedRow(
+                seed=0, cap_pct=70.0, median_survival=120.0, starve=0, hazard=0, trunc=5
+            )
+        ],
+        "rda_const": [
+            SeedRow(
+                seed=0, cap_pct=50.0, median_survival=100.0, starve=1, hazard=0, trunc=2
+            )
+        ],
+    }
+    text = to_csv(arm_rows, control="rda_const")
+    assert "rda_g1" in text
+    assert "diff_vs_rda_const" in text
+
+
+def test_load_eval_file(tmp_path: Path) -> None:
+    p = tmp_path / "eval.json"
+    p.write_text(
+        json.dumps(
+            {
+                "seed": 3,
+                "per_agent": [{"class": "truncation", "death_step": 120}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    rows = load_eval_file(p)
+    assert rows[0].seed == 3
+    assert rows[0].trunc == 1
+
+
+# ------------------------------------------------------- gate helpers
+def test_gate_stats_fraction_at_max() -> None:
+    lam = np.array([0.9, 0.9984, 0.9985, 0.5])
+    stats = gate_stats(lam, lam_max=0.9984375)
+    assert 0.25 <= stats["fraction_at_max"] <= 0.5
+    assert stats["hist"].sum() == 4
+
+
+def test_rail_warning_detects_long_saturation() -> None:
+    mag = np.full(250, 0.99)
+    runs = rail_warning(mag, rail=1.0, tol=0.02, min_steps=100)
+    assert len(runs) == 1
+    assert runs[0]["length"] == 250
+
+
+def test_rail_warning_no_warning_short() -> None:
+    mag = np.full(50, 0.99)
+    runs = rail_warning(mag, rail=1.0, tol=0.02, min_steps=100)
+    assert runs == []
+
+
+def test_correlate_events() -> None:
+    lam = np.array([0.9, 0.99, 0.99, 0.91])
+    events = np.array([0.0, 1.0, 1.0, 0.0])
+    r = correlate_events(lam, events)
+    assert r > 0.9
+
+
+# ------------------------------------------------------- param counts
+@pytest.mark.skipif(not _torch_available(), reason="torch not installed")
+def test_arm_param_count_rda_g1() -> None:
+    arm = Arm(name="rda_g1", backbone="rda_g1")
+    params, h, _ = arm_param_count(arm)
+    assert params > 0
+    assert h
+
+
+@pytest.mark.skipif(not _torch_available(), reason="torch not installed")
+def test_arm_param_counts_table_within_5pct() -> None:
+    arms = [
+        Arm(name="rda_g1", backbone="rda_g1"),
+        Arm(name="rda_const", backbone="rda_const"),
+    ]
+    rows = arm_param_counts(arms)
+    assert len(rows) == 2
+    a, b = rows[0]["params"], rows[1]["params"]
+    assert abs(a - b) / max(a, b) <= 0.05
+
+
+# ------------------------------------------------------- torch-free GUI import
+def test_cockpit_import_does_not_load_torch() -> None:
+    code = (
+        "import sys; "
+        "import simlab.gui.cockpit as c; "
+        "sys.exit(1 if 'torch' in sys.modules else 0)"
+    )
+    env = dict(os.environ)
+    env.setdefault("QT_QPA_PLATFORM", "offscreen")
+    creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(
+        subprocess, "CREATE_NO_WINDOW", 0
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=str(REPO),
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=120,
+        env=env,
+        creationflags=creationflags,
+    )
+    assert proc.returncode == 0, proc.stderr

@@ -267,3 +267,60 @@ perturbation of the observation after step `t` therefore changes nothing at `t`
 - Trainable gate parameters are implemented but off by default (`trainable_gate`
   flag); the scalar optimizer-group exclusion is enforced by never putting them
   on `log_std_*`.
+
+---
+
+## 9. Research cockpit (GUI)
+
+The cockpit (`simlab/gui/cockpit.py`) is a dock in the main window with six
+tabs. It is designed so you can run, watch, and compare retention experiments
+without touching code.
+
+### 9.1 Experiment builder (tab 1)
+
+- Pick preset(s) from the registry (arms), training seeds, total steps, rollout
+  length, and workers; save as TOML under `runs/`. The arm table shows each
+  arm's param count (computed lazily on the GUI thread, torch off-thread).
+- **Protocol guards** (`simlab/research/experiment.py`):
+  - training seeds `>= 100000` only;
+  - workers pinned to 4 by default, with a visible warning if changed;
+  - dev seeds `0-19`; test seeds `1000-1019` behind a confirm dialog
+    ("final report only");
+  - warning if fewer than 3 seeds per arm.
+
+### 9.2 Run queue (tab 2)
+
+`simlab/research/queue.py` launches the grid as a single resumable detached
+queue: one serving process plus an exclusive lock file (with staleness recovery),
+per-run status, pause-after-current-run, resume after crash/restart, and Stop.
+Each run writes a results JSON with seed, init checksum, worker count, and the
+git commit.
+
+### 9.3 Watch live (tab 3)
+
+A "Follow latest checkpoint" mode polls for the newest checkpoint (interval
+configurable) and plays it in the world view while training continues in its
+subprocess. The inspector shows `d_t`, `E_t` (8 drive curves), `lambda_t`, and
+FiLM gains for RDA presets; speed/pause/step controls are the existing ones.
+
+### 9.4 Training curves (tab 4)
+
+Live plots from the run logs (`learning.csv` / quick-eval comment lines): return,
+entropy, KL, value loss, and checkpoint cap%/median, with arms overlaid.
+
+### 9.5 Results table (tab 5)
+
+`simlab/research/results.py` aggregates per arm per seed: cap%, median,
+starve/hazard/trunc for Balanced and Hard on dev seeds, mean +/- spread across
+seeds, and differences vs a chosen control arm (rda_const for RDA arms). It
+prints only numbers and per-seed values (no verdict words) and exports to CSV.
+
+### 9.6 Gate diagnostics (tab 6)
+
+`simlab/research/gates.py` + `simlab/research/replay.py` plot, live or from a
+loaded checkpoint: `lam_t` (per drive), `m_t`, `s_t`, `E_t`, and `|E|` against
+the saturation rail; the fraction of steps where `lam` is at its maximum, a
+`lam` histogram, and the correlation of `lam` with logged salient events
+(hazard contact, food eaten, damage). The control arm's `lam` distribution is
+overlaid when a control is selected, and a warning fires if `|E|` stays within
+0.02 of the rail for more than N steps.

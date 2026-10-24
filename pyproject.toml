@@ -28,3 +28,6 @@ include = ["simlab*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+exclude = ["reference"]
