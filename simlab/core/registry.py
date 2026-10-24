@@ -161,3 +161,9 @@ def load_plugins() -> None:
             continue
         for module in pkgutil.iter_modules(package.__path__, package_name + "."):
             importlib.import_module(module.name)
+    # Register the TorchPolicy adapter without importing torch at module load
+    # (torch is imported lazily inside TorchPolicy methods).
+    try:
+        importlib.import_module("simlab.training.torch_policy")
+    except ModuleNotFoundError:
+        pass

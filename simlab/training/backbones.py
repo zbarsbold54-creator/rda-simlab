@@ -694,7 +694,9 @@ def match_params(
     cls = BACKBONES[backbone]
     target = int(target)
     best: tuple[int, int] | None = None
-    for size in range(32, 1025, 16):
+    # Step 4 keeps d_model divisible by the default 4 heads (RDA-TF family)
+    # while letting the sweep land within 5% of the target for film fusion.
+    for size in range(32, 1025, 4):
         if _is_recurrent(backbone):
             bb = cls(obs_dim=obs_dim, hidden=size, fusion=fusion, n_drives=n_drives)
         else:

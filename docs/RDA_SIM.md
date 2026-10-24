@@ -359,3 +359,50 @@ the saturation rail; the fraction of steps where `lam` is at its maximum, a
 (hazard contact, food eaten, damage). The control arm's `lam` distribution is
 overlaid when a control is selected, and a warning fires if `|E|` stays within
 0.02 of the rail for more than N steps.
+
+---
+
+## 11. v0.2 verification fixes
+
+- **gru_legacy parity restored.** `gru_legacy` (learner-v0 net, hidden 64,
+  no FiLM) now loads `tests/fixtures/learner_v0_final.pt` and evals identically
+  to the old `LearnedGRU` path: Balanced 5, dev seeds 0-19, cap 10000 →
+  cap 5.0%, median 3705, pinned by `test_gru_legacy_fixture_eval_golden`.
+  The earlier v0.1 note (numbers "do not reproduce") is superseded — the
+  discrepancy was an action-selection/eval-side difference, now fixed.
+- **gru_legacy size.** It builds with exactly 9798 params (hidden 64, no FiLM)
+  and is never size-matched (`test_gru_legacy_never_size_matched`); the earlier
+  71910 reading came from building it with film + `obs_drives`, which is not
+  its configuration.
+- **RDA film `in_dim` fix.** For non-concat fusion, `_build_from_cfg` /
+  `_build_from_arch` previously clipped `_in_dim` to `obs_dim(with_drives=False)`
+  (83), while RDA backbones slice the 8 drives from the trailing dims and need
+  the full 91-wide `obs_drives` vector → `in_proj.in_features` shape crash at
+  train time. `_policy_in_dim()` now returns `obs_dim(with_drives=True)` for the
+  RDA family (and honors `with_drives` for plain backbones): `rda_gru_fixed` /
+  `rda_tf_fixed` film smokes and `test_film_fusion_with_obs_drives_forward`
+  (gru/transformer/rda_gru_fixed/rda_tf_fixed) pass.
+- **Size matching within 5%.** `match_params` sweeps in 4-wide steps (keeps
+  `d_model` divisible by the default 4 heads). Against the transformer obs-only
+  target (73606): `rda_gru_*` land at hidden 136 → 70398 (-4.36%);
+  `rda_tf_*` at d_model 60 → 69986 (-4.92%); plain `gru` 71502 (-2.86%) and
+  `transformer` 75270 (+2.26%). `test_film_rda_match_params_within_5_percent`.
+- **Atomic checkpoint writes.** `save_checkpoint` writes to a temp file in the
+  same folder, flushes/fsyncs, then `os.replace`. `_load_checkpoint` and the
+  "Follow latest checkpoint" follower tolerate missing/unreadable files by
+  keeping the previous checkpoint and showing a status message;
+  `checkpoint_readable` is a cheap torch-free zip check.
+- **Result table (matched, film, obs_drives):**
+
+  | preset | params | %diff vs transformer |
+  |---|---:|---:|
+  | gru | 71502 | -2.86 |
+  | transformer | 75270 | +2.26 |
+  | rda / rda_const / rda_g1 / rda_g1_rand / rda_g3 / rda_g3_tied | 70398 | -4.36 |
+  | rda_gru_fixed / _constant / _surprise / _surprise_rand / _per_drive / _per_drive_tied | 70398 | -4.36 |
+  | rda_tf_fixed / _constant / _surprise / _surprise_rand / _per_drive / _per_drive_tied | 69986 | -4.92 |
+  | gru_legacy (never matched) | 9798 | n/a |
+
+  Each count includes the shared obs encoder, the backbone, the drive/retention
+  module, the auxiliary heads (`pred_o`, `pred_d`), and constants; `gru_legacy`
+  (no FiLM, hidden 64) is the lone non-matched exception.

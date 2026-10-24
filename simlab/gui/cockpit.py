@@ -47,7 +47,7 @@ from simlab.research.experiment import (
     dump_experiment_toml,
     load_experiment_toml,
 )
-from simlab.research.follower import FollowState, poll_latest
+from simlab.research.follower import FollowState, checkpoint_readable, poll_latest
 from simlab.research.gates import correlate_events, gate_stats, rail_warning
 from simlab.research.logs import curve_series
 from simlab.research.queue import (
@@ -490,6 +490,12 @@ class CockpitWidget(QWidget):
         ckpt = poll_latest(run_dir, self._follow_state)
         if ckpt is None:
             self.live_status.setText(f"Following {run_dir} (no new checkpoint).")
+            return
+        if not checkpoint_readable(ckpt):
+            # Keep the previous good checkpoint and tell the user.
+            self.live_status.setText(
+                f"Following {run_dir} (new checkpoint unreadable, keeping previous)."
+            )
             return
         self._last_checkpoint = ckpt
         # Rebuild a learned_torch playback config for the world view.

@@ -1222,3 +1222,53 @@ Status: complete; committed and tagged `rda-v0.1`.
   transformer (closest achievable on the discrete size grid; the added
   retention state pushes them just past 5%). The reference eval numbers do not
   reproduce (see above).
+
+## rda-v0.2 — parity, golden retention, film fix, checkpoint safety
+
+Status: complete; committed and tagged `rda-v0.2`.
+
+### 1. gru_legacy parity
+- Root cause was not `gru_legacy` itself: eval must pass `policy="learned_torch"`
+  (the registered policy); passing the backbone name was a no-op
+  (0.0% / median ~1061). With the correct policy, `gru_legacy` (hidden 64, no
+  FiLM) equals the fixture eval (cap 5.0%, median 3705, hash pinned) and forward
+  parity vs the old LearnedGRU path is max-abs-diff 0 (same obs, same init
+  hidden, same per-step hidden/logits/means/log_std/value).
+- `test_gru_legacy_fixture_eval_golden` pins the fixture eval; `test_gru_legacy_size`
+  pins 9798 params.
+
+### 2. Training-path regression (det-v1 vs HEAD)
+- Temp worktree at `29cfe22`; 2-iter smoke (seed 100000, rollout 1024,
+  workers 4, obs_only). HEAD `gru_legacy` vs det-v1 `GRUBackbone`(hidden 64)
+  → bit-identical weights (max abs diff 0.0); only the `arch` dict differs.
+  Worktree removed.
+
+### 3. RDA film in_dim fix
+- Non-concat fusion clipped `_in_dim` to 83 while RDA backbones need the 91-wide
+  `obs_drives` → `in_proj.in_features` shape crash at train time. `_policy_in_dim()`
+  now returns `obs_dim(with_drives=True)` for the RDA family.
+  `test_film_fusion_with_obs_drives_forward` (gru/transformer/rda_gru_fixed/
+  rda_tf_fixed) and CLI film smokes pass.
+- Size matching: `match_params` sweeps now use 4-wide steps (d_model stays
+  divisible by 4 heads). Target transformer obs-only = 73606; `rda_gru_*`
+  hidden 136 → 70398 (-4.36%), `rda_tf_*` d_model 60 → 69986 (-4.92%), both
+  within 5%. `test_film_rda_match_params_within_5_percent`.
+
+### 4. Golden retention tests
+- Hand-computed E/lam/m sequences for fixed, constant, surprise, surprise_rand,
+  per_drive, per_drive_tied with a surprise spike at step 3 (lam stays at
+  baseline at 3, rises at 4; per-drive indices checked separately), catching
+  indexing/ordering bugs causality tests cannot.
+
+### 5. Checkpoint safety
+- `save_checkpoint` writes tmp + flush + fsync + `os.replace`. `_load_checkpoint`
+  and "Follow latest checkpoint" tolerate missing/unreadable files by keeping the
+  previous checkpoint and showing a status; `checkpoint_readable` is a torch-free
+  zip check. Truncated-checkpoint tests pass.
+
+### 6. Validation
+- Per-file pytest counts (17 files, own process each): 5+4+3+9+4+7+3+8+1+2+2+4
+  +31+34+14+9+30 = 170 passed, 0 failed. Ruff clean. `eval --compare` no STALE.
+- Note: the combined single-process cockpit run returns a 0-byte log / exit 1
+  in this environment (tooling artifact — collection shows 30, and every cockpit
+  test passes in small groups); all test files pass individually.

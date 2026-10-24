@@ -195,20 +195,44 @@ def test_kill_tree_terminates_child_not_parent(tmp_path: Path) -> None:
 
 
 # ------------------------------------------- follow latest checkpoint
+def _write_zip(path: Path, payload: bytes = b"ckpt") -> None:
+    import zipfile
+
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("data", payload)
+
+
 def test_follow_latest_checkpoint(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
     run_dir.mkdir(parents=True, exist_ok=True)
     ckpt = run_dir / "latest.pt"
-    ckpt.write_bytes(b"one")
+    _write_zip(ckpt)
     state = FollowState()
     first = poll_latest(run_dir, state)
     assert first == ckpt
     second = poll_latest(run_dir, state)
     assert second is None
     # touching the file makes it "new" again
-    ckpt.write_bytes(b"two")
+    _write_zip(ckpt, b"two")
     third = poll_latest(run_dir, state)
     assert third == ckpt
+
+
+def test_follow_ignores_truncated_checkpoint(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    ckpt = run_dir / "latest.pt"
+    # Truncated / in-flight write: non-zip bytes.
+    ckpt.write_bytes(b"PK\x03\x04 truncated-not-a-valid-zip")
+    state = FollowState()
+    assert poll_latest(run_dir, state) is None
+    assert state.last_sig is None  # signature not advanced, will retry
+    # Once the write completes (valid zip) the follower picks it up.
+    _write_zip(ckpt)
+    assert poll_latest(run_dir, state) == ckpt
+    # An empty file is also not readable.
+    (run_dir / "final.pt").write_bytes(b"")
+    assert poll_latest(run_dir, state) is None
 
 
 def test_latest_checkpoint_name_preference(tmp_path: Path) -> None:

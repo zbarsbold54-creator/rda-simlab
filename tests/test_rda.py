@@ -97,6 +97,48 @@ def _run_incr(policy, seq: np.ndarray, t_stop: int | None = None):
     return snaps
 
 
+FILM_PRESETS = (
+    "gru",
+    "transformer",
+    "rda_gru_fixed",
+    "rda_tf_fixed",
+)
+
+
+def test_film_fusion_with_obs_drives_forward() -> None:
+    """Film fusion + obs_drives does not crash (regression for rda-0.2:
+    in_dim was clipped to 83 for non-concat fusion, so feeding the 91-wide
+    obs_drives vector raised a matmul shape error during training)."""
+    t = torch
+    rng = np.random.default_rng(7)
+    drives = _drive_stream(rng, 4)
+    seq = _obs_stream(rng, 4, drives)  # (4, 91)
+    assert seq.shape[1] == OBS_DRIVES_DIM
+    for bb in FILM_PRESETS:
+        pol = make_policy(
+            {"backbone": bb, "fusion": "film", "obs_mode": "obs_drives", "seed": 0}
+        )
+        h = pol._backbone.initial_state(4)
+        x = t.from_numpy(seq).float()
+        with t.no_grad():
+            a, v, h2 = pol.frame_step(x, h, None)
+        assert a.shape == (4, 3), bb
+        assert v.shape == (4,), bb
+        assert h2.shape == h.shape, bb
+
+
+@pytest.mark.parametrize("bb", ("rda_gru_fixed", "rda_tf_fixed"))
+def test_film_rda_match_params_within_5_percent(bb: str) -> None:
+    """RDA film presets are size-matchable within 5% of the transformer."""
+    target = make_policy({"backbone": "transformer", "obs_mode": "obs_only"}).param_count()
+    matched = make_policy(
+        {"backbone": bb, "obs_mode": "obs_drives", "fusion": "film",
+         "match_params": target}
+    )
+    count = matched.param_count()
+    assert abs(count - target) / target <= 0.05
+
+
 # ------------------------------------------------------------------ causality
 @pytest.mark.parametrize("bb", RDA_VARIANTS)
 def test_causality_future_obs_do_not_affect_past(bb: str) -> None:
@@ -349,3 +391,332 @@ def test_gru_legacy_loads_fixture_identically() -> None:
             sd[k].detach().reshape(-1).float(),
             torch.as_tensor(fsd[k]).reshape(-1).float(),
         ), k
+
+
+# ------------------------------------------------- gru_legacy never size-matched
+def test_gru_legacy_never_size_matched() -> None:
+    """gru_legacy is fixed at 9798 params and must ignore any match_params."""
+    pol = make_policy(
+        {
+            "backbone": "gru_legacy",
+            "fusion": "none",
+            "obs_mode": "obs_only",
+            "seed": 0,
+            "match_params": 74118,  # a foreign target must be ignored
+        }
+    )
+    assert pol.param_count() == 9798
+
+
+# ------------------------------------------------- fixture eval golden pin
+def test_gru_legacy_fixture_eval_golden() -> None:
+    """Pin the learner-v0 reference eval through gru_legacy.
+
+    Balanced 5, dev seeds 0-19, cap 10000. Expected: 5.0% cap, median 3705,
+    and the canonical results hash.
+    """
+    from simlab.eval_lib import aggregate, run_episode_metrics
+
+    fix = REPO / "tests/fixtures/learner_v0_final.pt"
+    cfg = REPO / "configs/balanced.toml"
+    results = []
+    for seed in range(20):
+        results.append(
+            run_episode_metrics(
+                policy="learned_torch",  # registered policy name; loads the fixture
+                seed=seed,
+                agents=5,
+                cap=10000,
+                config_path=str(cfg),
+                drive="simple",
+                checkpoint=str(fix),
+            )
+        )
+    agg = aggregate(results, wall_time=0.0, cap=10000)
+    assert agg["cap_pct"] == pytest.approx(5.0, abs=1e-9), agg
+    assert agg["median_survival"] == 3705, agg
+    assert agg["hash"] == "3e73e6d3232b6285", agg
+    assert agg["death_cause"] == {"starvation": 94, "hazard": 1, "truncation": 5}
+
+
+# --------------------------------------------------------- forward parity (net)
+def _gru_net_forward(net, x, h):
+    f = torch.tanh(net.gru_ih(x) + net.gru_hh(h))
+    return net.policy_head(f), net.value_head(f), f
+
+
+def test_gru_legacy_forward_parity_with_learned_gru_plugin() -> None:
+    """Same fixed obs stream + hidden -> bit-identical net outputs (both paths)."""
+    from simlab.plugins.learned_gru import LearnedGRU
+
+    fix = REPO / "tests/fixtures/learner_v0_final.pt"
+
+    old = LearnedGRU()
+    old._load_checkpoint(fix)
+
+    pol = make_policy(
+        {"backbone": "gru_legacy", "fusion": "none", "obs_mode": "obs_only", "seed": 0}
+    )
+    pol._load_checkpoint(fix)
+
+    rng = np.random.default_rng(2024)
+    x_seq = rng.uniform(-1, 1, size=(300, 83)).astype(np.float32)
+    h_old = torch.zeros(1, 64)
+    h_new = torch.zeros(1, 64)
+    first_diff = None
+    for k in range(300):
+        x = torch.from_numpy(x_seq[k : k + 1]).float()
+        a_old, v_old, f_old = _gru_net_forward(old._net, x, h_old)
+        a_new, v_new, f_new = _gru_net_forward(pol._backbone._net, x, h_new)
+        for name, l, r_ in (
+            ("hidden", f_old, f_new),
+            ("logits", a_old, a_new),
+            ("value", v_old, v_new),
+        ):
+            md = (l - r_).abs().max().item()
+            assert md == 0.0, f"{name} diverged at step {k}: {md}"
+        h_old = f_old.detach()
+        h_new = f_new.detach()
+    assert first_diff is None
+    print("GRU_PARITY maxdiff=0 over 300 steps")
+
+
+# ------------------------------------------------------- golden retention tests
+def _identity_ret(mode, n, h, **kw):
+    r = Retention(mode=mode, n_drives=n, hidden=h, rho=0.5, **kw)
+    with torch.no_grad():
+        r._base.pred_o.weight.copy_(torch.eye(h))
+        r._base.pred_o.bias.zero_()
+        r._base.pred_d.weight.copy_(torch.eye(n))
+        r._base.pred_d.bias.zero_()
+    r.eval()
+    return r
+
+
+def test_golden_fixed_retention() -> None:
+    r = _identity_ret("fixed", 2, 1)
+    d = [[0.2, 0.4], [0.3, 0.5]]
+    rs = r.initial_state(1)
+    E = []
+    lam = []
+    with torch.no_grad():
+        for k in range(2):
+            _, rs, met = r.step(
+                torch.zeros(1, 1), torch.tensor([d[k]]), rs
+            )
+            E.append(met["E"][0].tolist())
+            lam.append(met["lam"][0].tolist())
+    assert lam[0] == pytest.approx([0.9, 0.9], abs=1e-5)
+    assert lam[1] == pytest.approx([0.9, 0.9], abs=1e-5)
+    assert E[0] == pytest.approx([0.02, 0.04], abs=1e-5)
+    assert E[1] == pytest.approx([0.048, 0.086], abs=1e-5)
+
+
+def test_golden_constant_retention() -> None:
+    r = _identity_ret("constant", 2, 1)
+    with torch.no_grad():
+        r._base.e_const.copy_(torch.tensor([0.5, 0.25]))
+    rs = r.initial_state(1)
+    with torch.no_grad():
+        for k, dk in enumerate(([0.2, 0.4], [0.9, 0.1], [0.0, 0.0])):
+            _, rs, met = r.step(
+                torch.full((1, 1), float(k)), torch.tensor([dk]), rs
+            )
+            assert met["E"][0].tolist() == pytest.approx(
+                [0.5, 0.25], abs=1e-12
+            ), f"constant E depends on obs at step {k}"
+            assert met["lam"][0].tolist() == pytest.approx(
+                [0.0, 0.0], abs=1e-12
+            )
+
+
+def test_golden_surprise_gate_timing_and_E() -> None:
+    # h=1, n=1, rho=0.5, baseline=0.9, max=0.9984375, m_scale=4.
+    # Surprise injected at step 3 (o_emb=3 while prev_e=0).
+    r = _identity_ret("surprise", 1, 1)
+    o = [[0.0], [0.0], [3.0], [3.0]]
+    d = [[0.2], [0.4], [0.6], [0.8]]
+    rs = r.initial_state(1)
+    got = []
+    with torch.no_grad():
+        for k in range(4):
+            _, rs, met = r.step(
+                torch.tensor(o[k]).unsqueeze(0),
+                torch.tensor(d[k]).unsqueeze(0),
+                rs,
+            )
+            got.append({key: float(met[key][0]) for key in ("E", "lam", "m", "s")})
+    lam4 = 0.9 + (0.9984375 - 0.9) * (3.0 / 4.0)  # 0.973828125
+    # lam at step 3 unchanged (baseline); m rises to ~3 so lam jumps at step 4.
+    # The surprise is normalized by sqrt(1+EPS), so m is 3/sqrt(1+1e-6).
+    assert got[2]["lam"] == pytest.approx(0.9, abs=1e-5)
+    assert got[2]["m"] == pytest.approx(3.0, abs=1e-4)
+    assert got[3]["lam"] == pytest.approx(lam4, abs=1e-5)
+    # hand-computed E_t = lam*E_{t-1} + (1-lam)*d_t
+    E1 = 0.1 * 0.2
+    E2 = 0.9 * E1 + 0.1 * 0.4
+    E3 = 0.9 * E2 + 0.1 * 0.6
+    E4 = lam4 * E3 + (1.0 - lam4) * 0.8
+    assert got[0]["E"] == pytest.approx(E1, abs=1e-5)
+    assert got[1]["E"] == pytest.approx(E2, abs=1e-5)
+    assert got[2]["E"] == pytest.approx(E3, abs=1e-5)
+    assert got[3]["E"] == pytest.approx(E4, abs=1e-5)
+
+
+def test_golden_per_drive_retention() -> None:
+    r = _identity_ret("per_drive", 2, 1)
+    d = [[0.2, 0.4], [0.3, 0.5]]
+    rs = r.initial_state(1)
+    got = []
+    with torch.no_grad():
+        for k in range(2):
+            _, rs, met = r.step(torch.zeros(1, 1), torch.tensor([d[k]]), rs)
+            got.append(
+                {
+                    "E": met["E"][0].tolist(),
+                    "lam": met["lam"][0].tolist(),
+                    "m": met["m"][0].tolist(),
+                }
+            )
+    # step 1: prev_d=0 -> s=[0.2,0.4], m=[0.2,0.4], lam=baseline
+    assert got[0]["lam"] == pytest.approx([0.9, 0.9], abs=1e-5)
+    assert got[0]["m"] == pytest.approx([0.2, 0.4], abs=1e-5)
+    assert got[0]["E"] == pytest.approx([0.02, 0.04], abs=1e-5)
+    # step 2: s=[0.1,0.1]; m=0.5*[0.2,0.4]+[0.1,0.1]=[0.2,0.3].
+    # Past-only rule: lam at step 2 uses m_prev (state m after step 1 =
+    # [0.2,0.4]), NOT the newly computed m.
+    m2 = [0.2, 0.3]
+    m_prev = [0.2, 0.4]
+    lam2 = [
+        0.9 + 0.0984375 * (m_prev[0] / 4.0),
+        0.9 + 0.0984375 * (m_prev[1] / 4.0),
+    ]
+    E2 = [
+        lam2[0] * got[0]["E"][0] + (1 - lam2[0]) * d[1][0],
+        lam2[1] * got[0]["E"][1] + (1 - lam2[1]) * d[1][1],
+    ]
+    assert got[1]["m"] == pytest.approx(m2, abs=1e-5)
+    assert got[1]["lam"] == pytest.approx(lam2, abs=1e-5)
+    assert got[1]["E"] == pytest.approx(E2, abs=1e-5)
+    # per-drive gates differ because each drive's trace differs.
+    assert got[1]["lam"][0] != got[1]["lam"][1]
+
+
+def test_golden_per_drive_tied_retention() -> None:
+    # Shared G1 gate sets a scalar lam broadcast to all drives; per-drive m/s
+    # still tracked. Surprise at step 3 leaves lam at baseline, rises at step 4.
+    r = _identity_ret("per_drive_tied", 2, 1)
+    o = [[0.0], [0.0], [3.0], [3.0]]
+    d = [[0.2, 0.4], [0.3, 0.5], [0.4, 0.6], [0.5, 0.7]]
+    rs = r.initial_state(1)
+    got = []
+    with torch.no_grad():
+        for k in range(4):
+            _, rs, met = r.step(
+                torch.tensor(o[k]).unsqueeze(0),
+                torch.tensor([d[k]]),
+                rs,
+            )
+            got.append(
+                {
+                    "E": met["E"][0].tolist(),
+                    "lam": met["lam"][0].tolist(),
+                    "m": met["m"][0].tolist(),
+                    "m_g": float(met["m_g"][0]),
+                }
+            )
+    lam4 = 0.9 + 0.0984375 * (3.0 / 4.0)
+    assert got[2]["lam"] == pytest.approx([0.9, 0.9], abs=1e-5)  # unchanged at surprise
+    assert got[3]["lam"] == pytest.approx([lam4, lam4], abs=1e-5)  # rises
+    # tied lam is scalar-broadcast: both drives equal at every step
+    for k in range(4):
+        assert got[k]["lam"][0] == got[k]["lam"][1]
+    # E recursion uses the broadcast lam and each drive's own d
+    E1 = [0.1 * 0.2, 0.1 * 0.4]
+    E2 = [0.9 * E1[0] + 0.1 * 0.3, 0.9 * E1[1] + 0.1 * 0.5]
+    E3 = [0.9 * E2[0] + 0.1 * 0.4, 0.9 * E2[1] + 0.1 * 0.6]
+    E4 = [lam4 * E3[0] + (1 - lam4) * 0.5, lam4 * E3[1] + (1 - lam4) * 0.7]
+    assert got[0]["E"] == pytest.approx(E1, abs=1e-5)
+    assert got[1]["E"] == pytest.approx(E2, abs=1e-5)
+    assert got[2]["E"] == pytest.approx(E3, abs=1e-5)
+    assert got[3]["E"] == pytest.approx(E4, abs=1e-5)
+
+
+def test_golden_surprise_rand_retention() -> None:
+    # lam sampled from the empirical histogram; pin bin indexing + reproducibility.
+    r = _identity_ret("surprise_rand", 2, 2)
+    with torch.no_grad():
+        r.hist_counts.zero_()
+        r.hist_counts[3] = 10.0
+    o = torch.zeros(1, 2)
+    d = torch.full((1, 2), 0.25)
+    torch.manual_seed(7)
+    rs = r.initial_state(1)
+    with torch.no_grad():
+        _, rs, met = r.step(o, d, rs)
+    lam = met["lam"][0]
+    lo = r.hist_edges[3].item()
+    hi = r.hist_edges[4].item()
+    for i in range(2):
+        assert lo <= float(lam[i]) <= hi, "sampled lam outside its histogram bin"
+    assert torch.equal(met["lam"][0][0], met["lam"][0][1])  # scalar broadcast
+    # E must use the sampled lam
+    expected_E = (1.0 - float(lam[0])) * 0.25
+    np.testing.assert_allclose(met["E"][0].tolist(), [expected_E, expected_E], atol=1e-6)
+    # reproducibility under the same seed
+    torch.manual_seed(7)
+    rs2 = r.initial_state(1)
+    with torch.no_grad():
+        _, _, met2 = r.step(torch.zeros(1, 2), torch.full((1, 2), 0.25), rs2)
+    assert torch.equal(met2["lam"], met["lam"])
+
+
+# ------------------------------------------------------- checkpoint safety
+def _policy_from_checkpoint(path) -> Any:
+    import types
+
+    from simlab.training.torch_policy import TorchPolicy
+
+    return TorchPolicy(seed=0, config=types.SimpleNamespace(policy_checkpoint=str(path)))
+
+
+def _policy_frame_produces(pol) -> None:
+    # A usable policy must reset and emit one action without raising.
+    pol.reset(1)
+    x = torch.zeros(1, pol._in_dim)
+    h = pol._backbone.initial_state(1)
+    with torch.no_grad():
+        a, v, h2 = pol.frame_step(x, h, None)
+    assert a is not None and v is not None and h2 is not None
+
+
+def test_checkpoint_save_is_atomic(tmp_path: Path) -> None:
+    pol = _policy("gru")
+    path = tmp_path / "ckpt.pt"
+    pol.save_checkpoint(path)
+    assert path.exists()
+    # No partial temp file remains after a successful save.
+    assert not list(tmp_path.glob("*.tmp"))
+    # Saving again overwrites atomically and stays loadable.
+    pol.save_checkpoint(path)
+    assert path.exists()
+    assert not list(tmp_path.glob("*.tmp"))
+    loaded = _policy_from_checkpoint(path)
+    assert loaded._load_error is None
+    _policy_frame_produces(loaded)
+
+
+def test_truncated_checkpoint_does_not_crash_policy(tmp_path: Path) -> None:
+    path = tmp_path / "broken.pt"
+    path.write_bytes(b"PK\x03\x04 truncated-garbage-not-a-real-checkpoint")
+    pol = _policy_from_checkpoint(path)
+    # No exception: falls back to a fresh policy and records the load error.
+    assert pol._load_error is not None
+    _policy_frame_produces(pol)
+
+
+def test_missing_checkpoint_falls_back_to_fresh_policy(tmp_path: Path) -> None:
+    path = tmp_path / "missing.pt"
+    pol = _policy_from_checkpoint(path)
+    assert pol._load_error is not None
+    _policy_frame_produces(pol)

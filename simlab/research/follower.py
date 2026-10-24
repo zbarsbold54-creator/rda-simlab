@@ -7,6 +7,7 @@ testable offscreen.
 
 from __future__ import annotations
 
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,16 +26,37 @@ def checkpoint_signature(path: str | Path | None) -> tuple[Any, ...] | None:
     return (st.st_mtime_ns, st.st_size)
 
 
+def checkpoint_readable(path: str | Path | None) -> bool:
+    """True if the path exists, is non-empty, and is an intact zip archive.
+
+    Torch ``.pt`` files are ZIP archives; a truncated write leaves the central
+    directory missing, so ``zipfile.is_zipfile`` rejects it without importing
+    torch. Keeps the follower torch-free.
+    """
+    if path is None:
+        return False
+    p = Path(path)
+    if not p.exists() or p.stat().st_size == 0:
+        return False
+    return zipfile.is_zipfile(p)
+
+
 @dataclass
 class FollowState:
     last_sig: tuple[Any, ...] | None = None
 
 
 def poll_latest(run_dir: str | Path, state: FollowState) -> Path | None:
-    """Return the newest checkpoint if it changed since last poll, else None."""
+    """Return the newest checkpoint if it changed and is readable since last poll.
+
+    An unreadable (truncated/in-flight) checkpoint is ignored and the previous
+    signature is kept, so a later poll retries it once the write completes.
+    """
     ckpt = latest_checkpoint(run_dir)
     sig = checkpoint_signature(ckpt)
     if sig is None or sig == state.last_sig:
+        return None
+    if not checkpoint_readable(ckpt):
         return None
     state.last_sig = sig
     return ckpt

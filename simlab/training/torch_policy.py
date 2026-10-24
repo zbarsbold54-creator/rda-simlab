@@ -7,6 +7,8 @@ matching the existing learned-policy isolation contract.
 
 from __future__ import annotations
 
+import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +16,6 @@ import numpy as np
 
 from simlab.core.registry import register
 from simlab.core.types import Action
-from simlab.training.backbones import BACKBONES
 from simlab.training.encoding import encode_observation, obs_dim
 
 POLICY_NAME = "learned_torch"
@@ -23,6 +24,20 @@ DEFAULT_HIDDEN = 64
 
 def _infer_obs_mode(in_dim: int) -> str:
     return "obs_drives" if int(in_dim) > obs_dim(with_drives=False) else "obs_only"
+
+
+def _policy_in_dim(backbone: str, fusion: str, with_drives: bool) -> int:
+    """Width of the observation consumed by ``backbone``'s entry layer.
+
+    RDA backbones slice the instantaneous drive vector from the trailing obs
+    dims, so they always read the full ``obs_drives`` width regardless of
+    fusion. Non-RDA backbones consume ``x`` as-is; film fusion bypasses the
+    drive argument at train time (``drive=None``), so the net is sized to the
+    actual observation width (drives included when ``obs_drives``).
+    """
+    if backbone.startswith("rda_") or backbone == "rda":
+        return obs_dim(with_drives=True)
+    return obs_dim(with_drives=with_drives)
 
 
 class TorchPolicy:
@@ -42,25 +57,33 @@ class TorchPolicy:
         self._in_dim = 0
         self._with_drives = False
         self._fusion = "concat"
+        self._load_error: str | None = None
         if config is not None:
             ckpt = getattr(config, "policy_checkpoint", None)
             if ckpt:
-                self._load_checkpoint(Path(ckpt))
-                return
+                try:
+                    self._load_checkpoint(Path(ckpt))
+                    return
+                except Exception as exc:  # noqa: BLE001 - keep previous/fresh policy
+                    self._load_error = f"{type(exc).__name__}: {exc}"
+                    logging.getLogger(__name__).warning(
+                        "checkpoint %s unreadable, using fresh policy: %s",
+                        ckpt,
+                        self._load_error,
+                    )
         self._build_from_cfg(dict(cfg or {}), int(seed))
 
     # ------------------------------------------------------------- construction
     def _build_from_cfg(self, cfg: dict[str, Any], seed: int) -> None:
+        from simlab.training.backbones import BACKBONES
+
         torch = self._t
         backbone_name = cfg.get("backbone", "gru")
         obs_mode = cfg.get("obs_mode", "obs_only")
         self._with_drives = obs_mode == "obs_drives"
         self._fusion = cfg.get("fusion", "concat")
         self._n_drives = 8
-        if self._fusion == "concat":
-            self._in_dim = obs_dim(with_drives=self._with_drives)
-        else:
-            self._in_dim = obs_dim(with_drives=False)
+        self._in_dim = _policy_in_dim(backbone_name, self._fusion, self._with_drives)
         kwargs = dict(cfg.get("kwargs", {}))
         torch.manual_seed(seed)
         self._backbone = BACKBONES[backbone_name](
@@ -71,13 +94,12 @@ class TorchPolicy:
         )
 
     def _build_from_arch(self, arch: dict[str, Any]) -> None:
+        from simlab.training.backbones import BACKBONES
+
         self._fusion = arch.get("fusion", "concat")
         self._n_drives = int(arch.get("n_drives", 8))
-        if self._fusion == "concat":
-            self._in_dim = obs_dim(with_drives=self._with_drives)
-        else:
-            self._in_dim = obs_dim(with_drives=False)
         backbone_name = arch.get("backbone", "gru")
+        self._in_dim = _policy_in_dim(backbone_name, self._fusion, self._with_drives)
         kwargs = {
             k: v for k, v in arch.items() if k not in ("backbone", "fusion", "n_drives")
         }
@@ -119,7 +141,16 @@ class TorchPolicy:
         retention = getattr(self._backbone, "_retention", None)
         if retention is not None:
             data["retention_state_dict"] = retention.state_dict()
-        self._t.save(data, path)
+        path = Path(path)
+        tmp = path.with_name(path.name + ".tmp")
+        self._t.save(data, tmp)
+        # Flush to disk before the atomic rename so a crash cannot leave a
+        # truncated checkpoint at the final path.
+        if hasattr(tmp, "open"):
+            with tmp.open("ab") as fh:
+                fh.flush()
+                os.fsync(fh.fileno())
+        os.replace(tmp, path)
 
     def config_dict(self) -> dict[str, Any]:
         cfg = self._backbone.config_dict()
@@ -290,6 +321,10 @@ def make_policy(cfg: dict[str, Any]) -> TorchPolicy:
     optional ``checkpoint``.
     """
     cfg = dict(cfg)
+    # gru_legacy is the fixed learner-v0 net (hidden 64, no FiLM, 9798
+    # params). It must never be size-matched; ignore any sizing request.
+    if cfg.get("backbone") == "gru_legacy":
+        cfg.pop("match_params", None)
     target = cfg.get("match_params")
     if target is not None:
         from simlab.training.backbones import _is_recurrent, match_params
@@ -298,7 +333,7 @@ def make_policy(cfg: dict[str, Any]) -> TorchPolicy:
         obs_mode = cfg.get("obs_mode", "obs_only")
         fusion = cfg.get("fusion", "concat")
         with_drives = obs_mode == "obs_drives"
-        dim = obs_dim(with_drives=with_drives) if fusion == "concat" else obs_dim()
+        dim = _policy_in_dim(backbone, fusion, with_drives)
         kwargs = dict(cfg.get("kwargs", {}))
         if _is_recurrent(backbone):
             kwargs.setdefault(

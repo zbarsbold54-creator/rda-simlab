@@ -18,6 +18,7 @@ must never be imported by the core or the GUI.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -98,7 +99,14 @@ class LearnedGRU:
             "with_drives": self._with_drives,
             "state_dict": self._net.state_dict(),
         }
-        self._t.save(data, path)
+        path = Path(path)
+        tmp = path.with_name(path.name + ".tmp")
+        self._t.save(data, tmp)
+        if hasattr(tmp, "open"):
+            with tmp.open("ab") as fh:
+                fh.flush()
+                os.fsync(fh.fileno())
+        os.replace(tmp, path)
 
     # --------------------------------------------------------------- lifecycle
     def reset(self, n_agents: int, rng: Any = None) -> None:
