@@ -983,7 +983,7 @@ heuristic: vs heuristic BETTER  (eval --compare, no STALE)
 smoke train --arch -> runs\smoke_train
 ```
 
-## Phase 9 � PPO training profile (perf-v0)
+## Phase 9 � PPO training profile (perf-v0)
 
 Status: profiling complete; option changes committed as `perf-v0`. GPU step
 skipped (CPU-only torch installed).
@@ -1066,3 +1066,70 @@ Recommended: CPU update with default threads (N=1); GPU split not worth keeping.
 - Result: R1024 and G999 both help vs R256 baseline on cap%; R1024 strongest
   (balanced 25-28% vs 0-1%). Seed noise does not dominate. See
   docs/DIAGNOSTICS.md.
+
+## rda-v0 — RDA research readiness (STEP 1-5 of the RDA prep task)
+
+Status: complete; committed and tagged `rda-v0`.
+
+### Design
+- docs/RDA_SIM.md — full design note (drive signals, retention modes, fusion,
+  presets, past-only accounting).
+- simlab/drives/definitions.py — the 8 instantaneous drive definitions (novelty,
+  uncertainty, threat, integrity, agency, learning_progress, arousal,
+  homeostatic_deviation), each numpy, deterministic, causal, with a
+  PLACEHOLDER label for the user to edit. Exposed in the inspector.
+
+### Implementation
+- Retention module (simlab/training/retention.py): `E_t = lam_t E_{t-1} + (1 - lam_t) d_t`;
+  modes fixed, constant, surprise (G1), surprise_rand (control), per_drive
+  (G3), per_drive_tied. Past-only gate (uses m_{t-1}); write uses d_t. Surprise
+  is a normalized aux-head prediction error with stop-gradient; aux heads are
+  allocated for every mode so all variants share one parameter budget
+  (size-matching). Trainable gate params only behind `trainable_gates`.
+- Fusion: `film` (per-position causal FiLM with normalization/saturation guard)
+  or `concat`.
+- Presets exposed as ArchSpecs: gru, transformer, rda, rda_const, rda_g1,
+  rda_g1_rand, rda_g3, rda_g3_tied. Each appears in the GUI dropdowns with a
+  generated form and exposes inspector introspection (d_t, E_t, lam_t, m_t,
+  s_t, FiLM gains, |E| vs rail).
+- PPO: aux loss wired into `_ppo_update`; checkpoint save/load round-trips the
+  retention state and variant name.
+
+### Validation
+Full suite (CPU), ruff clean, torch-free core/cli import, eval --compare with
+no STALE:
+
+```text
+123 passed in 206.14s (0:03:26)
+All checks passed!                 (ruff)
+TORCH_IMPORTED_AFTER_CORE_CLI= False
+policy=heuristic drive=simple scenario=balanced agents=20
+cap_pct=91.8% median_survival=10000
+vs random            : BETTER
+vs heuristic_noflee  : BETTER
+vs heuristic         : NOT DISTINGUISHABLE
+```
+
+RDA test file (causality, gate timing, surprise_rand independence, constant E,
+transformer equivalence, param-count table) and multiworker determinism:
+
+```text
+11 passed, 6 deselected in 2.37s   (test_rda.py, excluding multiworker)
+6 passed, 11 deselected in 132.12s (multiworker determinism)
+```
+
+Parameter counts (all RDA variants identical after size-matching):
+
+```text
+PARAM_COUNTS rda=18230, rda_const=18230, rda_g1=18230,
+rda_g1_rand=18230, rda_g3=18230, rda_g3_tied=18230
+```
+
+Placeholders / notes:
+- The 8 drive labels in simlab/drives/definitions.py are PLACEHOLDER strings the
+  user edits (arousal/learning_progress are simple blends/change signals).
+- Surprise aux-head, gate tunables (`baseline`, `gate_lambda_max`, rho,
+  m_scale), and `surprise_loss_weight` are configurable; `trainable_gates` is
+  opt-in and currently False.
+- RDA variants are research scaffolding; the heuristic/oracle baselines, world
+  dynamics, and scenarios are unchanged (eval --compare shows no STALE).

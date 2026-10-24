@@ -14,49 +14,8 @@ from typing import Any
 import numpy as np
 
 from simlab.core.registry import register
+from simlab.drives.definitions import DRIVE_NAMES, N_DRIVES, raw_drive_vector
 from simlab.training.arch_spec import add_spec
-
-DRIVE_NAMES = (
-    "novelty",
-    "uncertainty",
-    "threat",
-    "integrity",
-    "agency",
-    "learning_progress",
-    "arousal",
-    "homeostatic_deviation",
-)
-N_DRIVES = len(DRIVE_NAMES)
-
-
-def _raw_drive(obs: Any, last_rays: np.ndarray) -> np.ndarray:
-    """Raw 8-drive vector from one observation (info up to the current step)."""
-    rays = np.asarray(getattr(obs, "rays", ()), dtype=np.float32)
-    energy, health, speed = getattr(obs, "proprioception", (1.0, 1.0, 0.0))
-    hazard_dist = min(
-        (
-            float(ray)
-            for ray, kind in zip(rays, getattr(obs, "ray_types", ()))
-            if kind == 2
-        ),
-        default=20.0,
-    )
-    learning = 0.0
-    if last_rays.size and rays.size:
-        learning = float(np.clip(np.mean(np.abs(rays - last_rays)), 0.0, 1.0))
-    return np.asarray(
-        [
-            0.0,
-            float(np.clip(np.var(rays) if rays.size else 0.0, 0.0, 1.0)),
-            float(np.clip(1.0 - hazard_dist / 20.0, 0.0, 1.0)),
-            float(np.clip(1.0 - health, 0.0, 1.0)),
-            float(np.clip(speed, 0.0, 1.0)),
-            learning,
-            0.0,
-            float(np.clip(1.0 - energy, 0.0, 1.0)),
-        ],
-        dtype=np.float32,
-    )
 
 
 class NoneDriveCore:
@@ -135,7 +94,7 @@ class RDA8DriveCore:
             self.reset(len(obs_batch), info.get("rng"))
         raw = np.zeros((len(obs_batch), N_DRIVES), dtype=np.float32)
         for i, obs in enumerate(obs_batch):
-            raw[i] = _raw_drive(obs, self._last_rays[i])
+            raw[i] = raw_drive_vector(obs, self._last_rays[i])
             self._last_rays[i] = np.asarray(
                 getattr(obs, "rays", ()), dtype=np.float32
             ).copy()
@@ -157,9 +116,45 @@ class RDA8DriveCore:
         self.decay = np.asarray(state["decay"], dtype=np.float32)
 
 
+class InstantDriveCore:
+    """Instantaneous drive array: ``d_t = raw_drive_vector(obs)``.
+
+    Unlike ``RDA8DriveCore`` this applies no EMA; it returns the raw
+    instantaneous 8-drive signal at step ``t``. The learner-side Retention
+    consumes this signal.
+    """
+
+    names = DRIVE_NAMES
+    needs_observations = True
+
+    def __init__(self, decay: Any = None) -> None:
+        self._last_rays: list[np.ndarray] = []
+
+    def reset(self, n_agents: int, rng: Any) -> None:
+        self._last_rays = [np.zeros(0, dtype=np.float32) for _ in range(n_agents)]
+
+    def step(self, obs_batch: list[Any], info: dict[str, Any]) -> np.ndarray:
+        if len(self._last_rays) != len(obs_batch):
+            self.reset(len(obs_batch), info.get("rng"))
+        raw = np.zeros((len(obs_batch), N_DRIVES), dtype=np.float32)
+        for i, obs in enumerate(obs_batch):
+            raw[i] = raw_drive_vector(obs, self._last_rays[i])
+            self._last_rays[i] = np.asarray(
+                getattr(obs, "rays", ()), dtype=np.float32
+            ).copy()
+        return raw
+
+    def get_state(self) -> dict[str, Any]:
+        return {"last_rays": [r.copy() for r in self._last_rays]}
+
+    def set_state(self, state: dict[str, Any]) -> None:
+        self._last_rays = [np.asarray(r, dtype=np.float32) for r in state["last_rays"]]
+
+
 register("drive", "none")(NoneDriveCore)
 register("drive", "constant")(ConstantDriveCore)
 register("drive", "rda8")(RDA8DriveCore)
+register("drive", "instant")(InstantDriveCore)
 
 
 @dataclass
@@ -200,5 +195,13 @@ add_spec(
     description="Recurrent drive array E[t]=decay*E[t-1]+(1-decay)*drive[t].",
     config=RDA8Config,
     loader=lambda: RDA8DriveCore,
+    source=__name__,
+)
+add_spec(
+    "drive_core",
+    "instant",
+    description="Instantaneous drive array d_t (no EMA); consumed by the learner Retention.",
+    config=None,
+    loader=lambda: InstantDriveCore,
     source=__name__,
 )

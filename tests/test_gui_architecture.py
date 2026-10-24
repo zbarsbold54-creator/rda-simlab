@@ -82,7 +82,7 @@ def test_panel_builds_form_for_every_spec() -> None:
         widget._rebuild_forms()
         spec = get_spec("backbone", name)
         # A spec with config fields produces that many widgets; specs without
-        # config (rda stub) produce none but must not crash.
+        # config produce none but must not crash.
         if spec.config_type is not None:
             assert len(widget._backbone_widgets) == len(spec_schema(spec))
     for name in list_specs("drive_core"):
@@ -174,13 +174,13 @@ def test_build_through_button() -> None:
     assert widget.param_label.text().startswith("param_count=")
 
 
-def test_build_rda_stub_reports_error() -> None:
+def test_build_rda_variant_succeeds() -> None:
     widget = ArchitectureWidget(None)
-    widget.backbone.setCurrentText("rda")
+    widget.backbone.setCurrentText("rda_g1")
     widget._rebuild_forms()
     widget._build()
-    _wait_until(lambda: "failed" in widget.param_label.text().lower())
-    assert "failed" in widget.param_label.text().lower()
+    _wait_until(lambda: "param_count=" in widget.param_label.text() or "failed" in widget.param_label.text())
+    assert widget.param_label.text().startswith("param_count=")
 
 
 @pytest.mark.skipif(not _torch_available(), reason="torch not installed")

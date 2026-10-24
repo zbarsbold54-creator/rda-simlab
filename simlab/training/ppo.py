@@ -488,6 +488,8 @@ class PPOTrainer:
                     t_build += time.perf_counter() - t0
                     t0 = time.perf_counter()
 
+                if hasattr(self.policy, "reset_aux"):
+                    self.policy.reset_aux()
                 h = t.zeros((B, self.policy.hidden_size), device=dev)
                 pol_loss = t.zeros((), dtype=t.float32, device=dev)
                 val_loss = t.zeros((), dtype=t.float32, device=dev)
@@ -529,7 +531,17 @@ class PPOTrainer:
                 total_val += float(val_loss.item())
                 total_ent += float(ent_loss.item())
                 total_kl += float(kl_loss.item())
-                loss = pol_loss + 0.5 * val_loss - self.cfg.entropy_coef * ent_loss
+                aux_loss = (
+                    self.policy.aux_loss()
+                    if hasattr(self.policy, "aux_loss")
+                    else t.zeros((), dtype=t.float32, device=dev)
+                )
+                loss = (
+                    pol_loss
+                    + 0.5 * val_loss
+                    - self.cfg.entropy_coef * ent_loss
+                    + aux_loss
+                )
                 opt.zero_grad()
                 if prof:
                     t_bwd0 = time.perf_counter()

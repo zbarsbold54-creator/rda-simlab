@@ -346,6 +346,38 @@ class TransformerConfig:
     )
 
 
+@dataclass
+class RDAConfig:
+    hidden: int = field(
+        default=64,
+        metadata={"min": 16, "max": 1024, "help": "Encoder hidden size."},
+    )
+    rho: float = field(
+        default=0.99,
+        metadata={"min": 0.0, "max": 1.0, "help": "Trace decay rho for m_t."},
+    )
+    baseline: float = field(
+        default=0.9,
+        metadata={"min": 0.0, "max": 1.0, "help": "Baseline retention lam floor."},
+    )
+    gate_lambda_max: float = field(
+        default=0.9984375,
+        metadata={"min": 0.0, "max": 1.0, "help": "Retention ceiling."},
+    )
+    m_scale: float = field(
+        default=4.0,
+        metadata={"min": 0.01, "max": 100.0, "help": "Trace normalizer."},
+    )
+    surprise_loss_weight: float = field(
+        default=1.0,
+        metadata={"min": 0.0, "max": 100.0, "help": "Aux-head loss weight."},
+    )
+    trainable_gates: bool = field(
+        default=False,
+        metadata={"help": "Expose trainable gate parameters."},
+    )
+
+
 def _load_backbone(name: str) -> type:
     from simlab.training.backbones import BACKBONES
 
@@ -368,14 +400,23 @@ add_spec(
     loader=lambda: _load_backbone("transformer"),
     source=__name__,
 )
-add_spec(
-    "backbone",
-    "rda",
-    description="Stub; supply your own implementation through the slot.",
-    config=None,
-    loader=lambda: _load_backbone("rda"),
-    source=__name__,
-)
+_RDA_VARIANTS = {
+    "rda": "fixed decay",
+    "rda_const": "learned constant E (control)",
+    "rda_g1": "shared surprise gate (G1)",
+    "rda_g1_rand": "surprise_rand control gate",
+    "rda_g3": "per-drive surprise gate (G3)",
+    "rda_g3_tied": "per-drive gate tied to G1",
+}
+for _name, _desc in _RDA_VARIANTS.items():
+    add_spec(
+        "backbone",
+        _name,
+        description=f"RDA variant: {_desc}.",
+        config=RDAConfig,
+        loader=lambda n=_name: _load_backbone(n),
+        source=__name__,
+    )
 
 
 def build_policy_cfg(selection: dict[str, Any]) -> dict[str, Any]:
@@ -384,11 +425,18 @@ def build_policy_cfg(selection: dict[str, Any]) -> dict[str, Any]:
     Torch-free. The selection has keys: backbone, drive_core, fusion,
     obs_mode, seed, backbone_config, drive_config. Drive configuration is
     returned separately (the world side consumes it as ``config.drive``).
+
+    RDA backbones need ``d_t`` at every step, so they force
+    ``obs_mode="obs_drives"`` (drives appended as the trailing 8 dims).
     """
+    backbone = selection.get("backbone", "gru")
+    obs_mode = selection.get("obs_mode", "obs_only")
+    if backbone in _RDA_VARIANTS:
+        obs_mode = "obs_drives"
     return {
-        "backbone": selection.get("backbone", "gru"),
+        "backbone": backbone,
         "fusion": selection.get("fusion", "concat"),
-        "obs_mode": selection.get("obs_mode", "obs_only"),
+        "obs_mode": obs_mode,
         "seed": int(selection.get("seed", 0)),
         "kwargs": dict(selection.get("backbone_config", {})),
         "drive_core": selection.get("drive_core", "none"),

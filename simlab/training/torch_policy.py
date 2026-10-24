@@ -105,6 +105,9 @@ class TorchPolicy:
                 {"backbone": "gru", "hidden": hidden, "fusion": "concat"}
             )
         self._backbone._net.load_state_dict(data["state_dict"])
+        retention = getattr(self._backbone, "_retention", None)
+        if retention is not None and data.get("retention_state_dict") is not None:
+            retention.load_state_dict(data["retention_state_dict"])
 
     def save_checkpoint(self, path: str | Path) -> None:
         data = {
@@ -113,6 +116,9 @@ class TorchPolicy:
             "with_drives": self._with_drives,
             "state_dict": self._backbone._net.state_dict(),
         }
+        retention = getattr(self._backbone, "_retention", None)
+        if retention is not None:
+            data["retention_state_dict"] = retention.state_dict()
         self._t.save(data, path)
 
     def config_dict(self) -> dict[str, Any]:
@@ -244,8 +250,22 @@ class TorchPolicy:
     def log_std_thrust(self) -> Any:
         return self._backbone._net.log_std_thrust
 
+    def reset_aux(self) -> None:
+        reset = getattr(self._backbone, "reset_aux", None)
+        if reset is not None:
+            reset()
+
+    def aux_loss(self):
+        fn = getattr(self._backbone, "aux_loss", None)
+        if fn is not None:
+            return fn()
+        return self._t.zeros(())
+
     def parameters(self):
-        return self._backbone._net.parameters()
+        yield from self._backbone._net.parameters()
+        retention = getattr(self._backbone, "_retention", None)
+        if retention is not None:
+            yield from retention.parameters()
 
     def to(self, device: str):
         """Move the underlying net to ``device`` (e.g. ``"cuda"``)."""
@@ -280,7 +300,16 @@ def make_policy(cfg: dict[str, Any]) -> TorchPolicy:
         with_drives = obs_mode == "obs_drives"
         dim = obs_dim(with_drives=with_drives) if fusion == "concat" else obs_dim()
         kwargs = dict(cfg.get("kwargs", {}))
-        if backbone == "gru":
+        recurrent = (
+            "gru",
+            "rda",
+            "rda_const",
+            "rda_g1",
+            "rda_g1_rand",
+            "rda_g3",
+            "rda_g3_tied",
+        )
+        if backbone in recurrent:
             kwargs.setdefault(
                 "hidden", match_params(int(target), backbone, dim, fusion=fusion)
             )

@@ -23,7 +23,16 @@ LEGACY_CKPT = REPO / "tests" / "fixtures" / "learner_v0_final.pt"
 BACKWARD_COMPAT_HASH = "d3e1532311768f52"
 
 DRIVE_CORES = ("none", "constant", "rda8")
-BACKBONES = ("gru", "transformer")
+BACKBONES = (
+    "gru",
+    "transformer",
+    "rda",
+    "rda_const",
+    "rda_g1",
+    "rda_g1_rand",
+    "rda_g3",
+    "rda_g3_tied",
+)
 
 
 class FakeObs:
@@ -278,6 +287,10 @@ def test_match_params_within_5_percent():
         matched = make_policy(cfg)
         count = matched.param_count()
         assert abs(count - target) / target <= 0.05
-    # rda8 exists as a stub surface.
-    with pytest.raises(NotImplementedError):
-        make_policy({"backbone": "rda"})
+    # rda variants build and match to a reference too (recurrent hidden top).
+    base = make_policy({"backbone": "rda", "obs_mode": "obs_drives"})
+    target = base.param_count()
+    cfg = {"backbone": "rda_g1", "obs_mode": "obs_drives", "match_params": target}
+    matched = make_policy(cfg)
+    count = matched.param_count()
+    assert abs(count - target) / target <= 0.05
