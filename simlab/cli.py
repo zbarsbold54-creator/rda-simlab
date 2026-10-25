@@ -111,7 +111,28 @@ def _print_param_count(policy_name: str, config_path: str, checkpoint: str | Non
         return
 
 
+def _validate_policy_name(policy: str) -> None:
+    """Reject unknown policy names up front instead of silently falling back.
+
+    The eval path registers its policies lazily (torch is imported only when
+    ``learned_torch`` is requested), so we load the registrar and compare
+    against the registered set. Backbone names (e.g. ``gru_legacy``) and any
+    typo are not valid policy names and must fail loudly.
+    """
+    from simlab.core.registry import list_, load_plugins
+
+    load_plugins()
+    import simlab.training.torch_policy  # noqa: F401  (registers learned_torch)
+
+    valid = sorted(list_("policy"))
+    if policy not in valid:
+        raise ValueError(
+            f"unknown policy {policy!r}; valid policies: {valid}"
+        )
+
+
 def run_eval(args: argparse.Namespace) -> int:
+    _validate_policy_name(args.policy)
     from simlab.eval_lib import (
         REPO,
         aggregate,

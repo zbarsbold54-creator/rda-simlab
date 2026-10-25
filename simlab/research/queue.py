@@ -69,6 +69,35 @@ def has_flag(queue_dir: str | Path, name: str) -> bool:
 
 
 def _pid_alive(pid: int) -> bool:
+    """Return whether a process with ``pid`` exists.
+
+    On Windows ``os.kill(pid, 0)`` cannot be used as a liveness probe: signal
+    ``0`` equals ``CTRL_C_EVENT``, so it sends a real Ctrl+C event (which
+    interrupts the caller) instead of checking existence.  Use the Win32
+    ``OpenProcess``/``GetExitCodeProcess`` pair instead.
+    """
+    if not pid or pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        # OpenProcess returns 0 when the process does not exist.
+        handle = ctypes.windll.kernel32.OpenProcess(
+            PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid)
+        )
+        if not handle:
+            return False
+        try:
+            exit_code = ctypes.c_ulong()
+            ok = ctypes.windll.kernel32.GetExitCodeProcess(
+                handle, ctypes.byref(exit_code)
+            )
+            if not ok:
+                return True  # cannot query; assume alive
+            return exit_code.value == 259  # STILL_ACTIVE
+        finally:
+            ctypes.windll.kernel32.CloseHandle(handle)
     try:
         os.kill(pid, 0)
     except PermissionError:
@@ -342,7 +371,13 @@ def _default_runner(queue_dir: str | Path, job: Job, exp: Experiment) -> int:
         "--out",
         str(out_dir),
     ]
-    proc = subprocess.Popen(args)
+    # Spawn the training subprocess in its own process group so a Stop
+    # (taskkill /T) targets only that tree and never delivers a console
+    # control event (e.g. KeyboardInterrupt) to the queue/GUI process.
+    creationflags = 0
+    if os.name == "nt":
+        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    proc = subprocess.Popen(args, creationflags=creationflags)
     while proc.poll() is None:
         if has_flag(queue_dir, STOP_FLAG):
             _kill_tree(proc.pid)

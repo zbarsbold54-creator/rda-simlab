@@ -57,6 +57,7 @@ from simlab.research.queue import (
     clear_flag,
     set_flag,
 )
+from simlab.research.replay import _infer_arm_from_checkpoint
 from simlab.research.results import (
     METRIC_KEYS,
     difference_rows,
@@ -498,13 +499,22 @@ class CockpitWidget(QWidget):
             )
             return
         self._last_checkpoint = ckpt
-        # Rebuild a learned_torch playback config for the world view.
+        # Rebuild a learned_torch playback config for the world view. Prefer
+        # the architecture stored next to the checkpoint itself so playback
+        # matches the actual trained net; fall back to the queue's arm guess.
         arm = self._guess_arm(run_dir)
+        inferred = _infer_arm_from_checkpoint(ckpt)
+        drive_core = inferred.get("drive_core", arm.drive_core)
+        drive_config = inferred.get("drive_config")
+        if drive_config is None:
+            drive_config = dict(arm.drive_config) or None
+        else:
+            drive_config = dict(drive_config) or None
         cfg = replace(
             self._base,
             policy="learned_torch",
-            drive=arm.drive_core,
-            drive_config=dict(arm.drive_config) or None,
+            drive=drive_core,
+            drive_config=drive_config,
             policy_checkpoint=str(ckpt),
             policy_cfg=None,
         )

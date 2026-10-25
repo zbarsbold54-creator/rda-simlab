@@ -162,6 +162,33 @@ def test_queue_lock_blocks_second_server(tmp_path: Path) -> None:
         mgr.release_lock()
 
 
+def test_pid_alive_does_not_send_ctrl_c() -> None:
+    """_pid_alive must probe liveness, not emit a Ctrl+C (SIGINT) event.
+
+    On Windows ``os.kill(pid, 0)`` maps to CTRL_C_EVENT and would interrupt the
+    calling process at its next blocking call (regression: an ordering-dependent
+    KeyboardInterrupt when the lock test ran before the kill-tree test).
+    """
+    import signal
+    import time
+
+    from simlab.research.queue import _pid_alive
+
+    fired: list[int] = []
+
+    def handler(sig, frame):
+        fired.append(sig)
+
+    previous = signal.signal(signal.SIGINT, handler)
+    try:
+        assert _pid_alive(os.getpid()) is True
+        # Leave time for an (incorrect) pending ctrl+C event to be delivered.
+        time.sleep(0.2)
+        assert fired == [], f"SIGINT was delivered: {fired}"
+    finally:
+        signal.signal(signal.SIGINT, previous)
+
+
 def test_queue_status_counts(tmp_path: Path) -> None:
     exp = _make_experiment(train_seeds=[TRAIN_SEED_MIN, TRAIN_SEED_MIN + 1])
     qdir = tmp_path / "qstatus"
@@ -180,8 +207,15 @@ def test_kill_tree_terminates_child_not_parent(tmp_path: Path) -> None:
 
     from simlab.research.queue import _kill_tree
 
+    # Spawn the child in its own process group (as the queue server does) so
+    # killing it never delivers a console control event to the parent. Without
+    # this, taskkill /T would interrupt the shared console and raise
+    # KeyboardInterrupt in the pytest (parent) process.
+    creationflags = getattr(sp, "CREATE_NEW_PROCESS_GROUP", 0)
     code = "import time; time.sleep(30)"
-    child = sp.Popen([sys.executable, "-c", code])
+    child = sp.Popen(
+        [sys.executable, "-c", code], creationflags=creationflags
+    )
     time.sleep(0.5)
     assert child.poll() is None  # child is running
     _kill_tree(child.pid)
@@ -448,3 +482,34 @@ def test_cockpit_import_does_not_load_torch() -> None:
         creationflags=creationflags,
     )
     assert proc.returncode == 0, proc.stderr
+
+def test_live_follow_uses_checkpoint_arch(tmp_path: Path) -> None:
+    """Live follow must prefer the architecture stored next to the checkpoint."""
+    from simlab.research.replay import _infer_arm_from_checkpoint
+
+    (tmp_path / "config.json").write_text(
+        json.dumps(
+            {
+                "architecture": {
+                    "drive_core": "rda_g1",
+                    "drive_config": {"base": 0.9},
+                    "obs_mode": "obs_drives",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    ckpt = tmp_path / "final.pt"
+    ckpt.write_bytes(b"dummy")
+    inf = _infer_arm_from_checkpoint(ckpt)
+    assert inf["drive_core"] == "rda_g1"
+    assert inf["drive_config"] == {"base": 0.9}
+    assert inf["obs_mode"] == "obs_drives"
+
+
+def test_infer_arm_fallback_when_config_missing(tmp_path: Path) -> None:
+    from simlab.research.replay import _infer_arm_from_checkpoint
+
+    ckpt = tmp_path / "final.pt"
+    ckpt.write_bytes(b"dummy")
+    assert _infer_arm_from_checkpoint(ckpt) == {}

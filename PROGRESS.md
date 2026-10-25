@@ -1272,3 +1272,35 @@ Status: complete; committed and tagged `rda-v0.2`.
 - Note: the combined single-process cockpit run returns a 0-byte log / exit 1
   in this environment (tooling artifact — collection shows 30, and every cockpit
   test passes in small groups); all test files pass individually.
+
+## rda-v0.3 - eval safety + cockpit test crash fix
+
+### 1. Eval safety
+- `cli run_eval` now validates the policy name up front (`_validate_policy_name`)
+  and raises a clear ValueError listing valid names; unknown/mismatched names no
+  longer fall back to a heuristic silently. The cockpit Results tab and live-follow
+  load the checkpoint's stored architecture config (`_infer_arm_from_checkpoint`)
+  and use `learned_torch`.
+- Tests: `test_eval_rejects_unknown_policy`, `test_eval_accepts_registered_policy`
+  (test_architecture.py); `test_live_follow_uses_checkpoint_arch`,
+  `test_infer_arm_fallback_when_config_missing` (test_cockpit.py).
+
+### 2. Cockpit test crash (ordering-dependent KeyboardInterrupt)
+- Cause: `_pid_alive` in `simlab/research/queue.py` probed liveness with
+  `os.kill(pid, 0)`. On Windows, signal 0 == CTRL_C_EVENT, so it sent a real
+  Ctrl+C instead of checking existence. When `test_queue_lock_blocks_second_server`
+  ran before `test_kill_tree_terminates_child_not_parent`, the second lock acquire
+  called `_pid_alive(<own pid>)`, which emitted Ctrl+C; the pending SIGINT was then
+  delivered at the next blocking call (the kill-tree test's `time.sleep`), raising
+  KeyboardInterrupt. This reproduced outside pytest in a standalone script, so the
+  cause is a code/environment bug, not missing Qt resource teardown.
+- Fix: on Windows `_pid_alive` now uses Win32 `OpenProcess` + `GetExitCodeProcess`
+  (STILL_ACTIVE) for liveness; the POSIX path is unchanged. Regression test:
+  `test_pid_alive_does_not_send_ctrl_c`.
+- Full `tests/test_cockpit.py` passes in one process: 33 passed.
+
+### 3. Validation (rda-v0.3)
+- Per-file pytest (each file in its own process): 33+9+7+33+2+1+2+4+14+9+8+3
+  +4+5+4+3+34 = 175 passed, 0 failed.
+- Ruff clean. `eval --compare` (Balanced 5, heuristic, dev seeds, cap 10000):
+  no STALE (verdicts printed).

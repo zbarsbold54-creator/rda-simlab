@@ -294,3 +294,18 @@ def test_match_params_within_5_percent():
     matched = make_policy(cfg)
     count = matched.param_count()
     assert abs(count - target) / target <= 0.05
+
+def test_eval_rejects_unknown_policy():
+    """Eval must reject unknown policy/backbone names loudly (no silent fallback)."""
+    from simlab.cli import _validate_policy_name
+
+    with pytest.raises(ValueError) as ei:
+        _validate_policy_name("gru_legacy")
+    assert "valid policies" in str(ei.value)
+    assert "learned_torch" in str(ei.value)
+
+
+def test_eval_accepts_registered_policy():
+    from simlab.cli import _validate_policy_name
+
+    _validate_policy_name("learned_torch")

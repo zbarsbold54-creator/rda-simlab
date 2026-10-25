@@ -59,16 +59,18 @@ def collect_gate_trace(
     arm = _infer_arm_from_checkpoint(ckpt)
     drive_core = arm.get("drive_core", "rda8")
     drive_config = arm.get("drive_config")
-    obs_mode = arm.get("obs_mode", "obs_drives")
 
     scenario = config_path or "configs/balanced.toml"
     base = load_config(scenario)
+    # The observation mode is not a SimLabConfig field; it is carried by the
+    # checkpoint's own arch config and applied inside TorchPolicy when the
+    # checkpoint is loaded. Only the drive core (and its config) is injected
+    # here because it shapes the d_t/E_t signals the trace reads.
     cfg = replace(
         base,
         policy="learned_torch",
         drive=drive_core,
         drive_config=drive_config,
-        obs_mode=obs_mode,
         policy_checkpoint=str(ckpt),
         agent=replace(base.agent, count=agents),
     )
