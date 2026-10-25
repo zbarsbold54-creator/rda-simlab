@@ -96,7 +96,6 @@ class MainWindow(QMainWindow):
         self.cockpit_dock = QDockWidget("Research Cockpit", self)
         self.cockpit_dock.setWidget(self.cockpit)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.cockpit_dock)
-        self.cockpit_dock.hide()
         self.scenario_dock.setMinimumWidth(theme.INSPECTOR_WIDTH)
         self.inspector_dock.setMinimumWidth(theme.INSPECTOR_WIDTH)
         self.plot_dock.setMinimumHeight(theme.PLOT_HEIGHT)
@@ -142,6 +141,7 @@ class MainWindow(QMainWindow):
             "Research Cockpit", self._toggle_cockpit
         )
         self._show_cockpit_action.setCheckable(True)
+        self._show_cockpit_action.setChecked(True)
         help_menu = self.menuBar().addMenu("&Help")
         help_menu.addAction("Copy diagnostics", self._copy_diagnostics)
         self._timer = QTimer(self)
@@ -211,6 +211,7 @@ class MainWindow(QMainWindow):
         self.world_view.set_frame(frame)
         self.inspector.set_agent(frame, self._selected_agent)
         self.drive_plot.update_frame(frame)
+        self.drive_plot.sync_live(frame.snapshot.step)
 
     def _accept_history(self, snapshots) -> None:
         for snapshot in snapshots:

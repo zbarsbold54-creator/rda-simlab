@@ -1403,3 +1403,27 @@ Status: complete; committed and tagged `rda-v0.2`.
 - `eval --compare` (Balanced 5, heuristic, dev seeds, cap 10000): no STALE.
 - No training run beyond unit tests this phase (no 2-iteration smoke; training
   code untouched).
+
+### 6. GUI usability fixes (gui-v1.2)
+User-reported: could not find the training tabs, timeline scrubbing felt broken
+("jumps to the beginning"), bottom drive graph empty.
+
+- Research Cockpit dock now visible by default (View -> Research Cockpit toggles
+  it; action checked to match). The six tabs live there: Experiment, Queue, Live,
+  Curves, Results, Gates.
+- DrivePlotWidget now plots drives with no agent selected (mean across agents),
+  so the bottom "Drives and Timeline" graph is never blank. Selecting an agent
+  switches to that agent's per-drive curves; deselecting reverts to the aggregate.
+  select_agent resets the redraw throttle so curves appear immediately.
+- Timeline slider now tracks the live simulation step (`sync_live` on every
+  published frame) instead of lagging behind history batches; scrubbing is
+  interaction-aware (no fighting the user's drag) and seeking to a non-recorded
+  step lands exactly on it.
+
+### Validation (gui-v1.2)
+- `ruff check simlab tests`: All checks passed.
+- Full suite (tests/): 190 passed, 0 failed.
+- `eval --compare` (Balanced 5, heuristic, dev seeds, cap 10000): no STALE.
+- New offscreen regressions: `test_drive_plot_shows_all_drives_without_selection`,
+  `test_research_cockpit_visible_by_default`,
+  `test_timeline_live_sync_and_scrub_to_nonrecorded_step`.

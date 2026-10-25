@@ -330,3 +330,71 @@ def test_phase5_gui_saves_and_loads_json_npz_snapshot(tmp_path, monkeypatch) -> 
     assert actual.state_hash() == expected.state_hash()
     window.close()
     app.processEvents()
+
+
+def test_drive_plot_shows_all_drives_without_selection() -> None:
+    import numpy as np
+
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow(seed=3, agent_count=2)
+    window.worker.set_playing(False)
+    window.show()
+    window.worker.request_steps(25)
+    deadline = time.monotonic() + 4.0
+    while window.worker.latest_snapshot.step < 25 and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.01)
+    app.processEvents()
+    assert window.drive_plot._lines, "drive plot should show data without an agent selection"
+    assert set(window.drive_plot._lines) == set(window.worker.latest_frame.drive_names)
+    for name, line in window.drive_plot._lines.items():
+        x, y = line.getData()
+        assert x.size > 0 and np.isfinite(y).all(), name
+    window.close()
+    app.processEvents()
+
+
+def test_research_cockpit_visible_by_default() -> None:
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow(seed=11, agent_count=1)
+    window.show()
+    app.processEvents()
+    assert window.cockpit_dock.isVisible()
+    assert window._show_cockpit_action.isChecked()
+    window._toggle_cockpit(False)
+    app.processEvents()
+    assert not window.cockpit_dock.isVisible()
+    window.close()
+    app.processEvents()
+
+
+def test_timeline_live_sync_and_scrub_to_nonrecorded_step() -> None:
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow(seed=7, agent_count=1)
+    window.worker.set_playing(False)
+    window.worker.set_speed("Max")
+    window.show()
+    window.worker.request_steps(60)
+    deadline = time.monotonic() + 5.0
+    while window.worker.latest_snapshot.step < 60 and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.01)
+    app.processEvents()
+    assert window.drive_plot.timeline.maximum() >= 60
+    target = 43
+    window.drive_plot.timeline.setValue(target)
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        app.processEvents()
+        if (
+            window.worker.latest_snapshot.step == target
+            and window.world_view._snapshot is not None
+            and window.world_view._snapshot.step == target
+        ):
+            break
+        time.sleep(0.02)
+    assert window.worker.latest_snapshot.step == target
+    assert window.world_view._snapshot is not None
+    assert window.world_view._snapshot.step == target
+    window.close()
+    app.processEvents()

@@ -31,6 +31,9 @@ class DrivePlotWidget(QWidget):
         layout.addWidget(self.plot, 1)
         layout.addWidget(self.timeline)
         self.timeline.valueChanged.connect(self.timelineChanged)
+        self._scrubbing = False
+        self.timeline.sliderPressed.connect(self._begin_scrub)
+        self.timeline.sliderReleased.connect(self._end_scrub)
         self._selected: str | None = None
         self._series: dict[str, deque[tuple[int, float]]] = {}
         self._lines: dict[str, object] = {}
@@ -42,6 +45,7 @@ class DrivePlotWidget(QWidget):
         for line in self._lines.values():
             self.plot.removeItem(line)
         self._lines.clear()
+        self._last_plot_update = 0.0
 
     def set_timeline_range(self, first: int, last: int, current: int) -> None:
         self.timeline.blockSignals(True)
@@ -49,18 +53,56 @@ class DrivePlotWidget(QWidget):
         self.timeline.setValue(min(max(current, first), max(first, last)))
         self.timeline.blockSignals(False)
 
+    def _begin_scrub(self) -> None:
+        self._scrubbing = True
+
+    def _end_scrub(self) -> None:
+        self._scrubbing = False
+
+    def sync_live(self, step: int) -> None:
+        """Keep the timeline pinned to the live simulation step while not scrubbing."""
+        if self._scrubbing:
+            return
+        self.timeline.blockSignals(True)
+        first = self.timeline.minimum()
+        self.timeline.setRange(first, max(first, step))
+        self.timeline.setValue(min(max(step, first), max(first, step)))
+        self.timeline.blockSignals(False)
+
+    def _drive_vector(self, frame: SimulationFrame) -> list[float] | None:
+        drive_count = len(frame.drive_names)
+        if drive_count == 0:
+            return None
+        selected = self._selected
+        if selected is not None and selected in frame.agents:
+            detail = frame.agents[selected]
+            drives = getattr(detail, "drives", None) or ()
+            return [
+                float(drives[index]) if index < len(drives) else 0.0
+                for index in range(drive_count)
+            ]
+        drives_by_agent = []
+        for detail in frame.agents.values():
+            drives = getattr(detail, "drives", None) or ()
+            if not drives:
+                continue
+            drives_by_agent.append(
+                [float(drives[i]) if i < len(drives) else 0.0 for i in range(drive_count)]
+            )
+        if not drives_by_agent:
+            return None
+        return [
+            sum(samples[index] for samples in drives_by_agent) / len(drives_by_agent)
+            for index in range(drive_count)
+        ]
+
     def update_frame(self, frame: SimulationFrame) -> None:
-        detail = frame.agents.get(self._selected)
-        if detail is None:
+        drives = self._drive_vector(frame)
+        if drives is None:
             return
         for index, name in enumerate(frame.drive_names):
             values = self._series.setdefault(name, deque(maxlen=theme.PLOT_HISTORY))
-            values.append(
-                (
-                    frame.snapshot.step,
-                    detail.drives[index] if index < len(detail.drives) else 0.0,
-                )
-            )
+            values.append((frame.snapshot.step, drives[index]))
         now = time.perf_counter()
         if now - self._last_plot_update < theme.DRIVE_PLOT_UPDATE_INTERVAL_S:
             return
