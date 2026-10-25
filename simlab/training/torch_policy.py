@@ -57,6 +57,7 @@ class TorchPolicy:
         self._in_dim = 0
         self._with_drives = False
         self._fusion = "concat"
+        self._embed_drives = False
         self._load_error: str | None = None
         if config is not None:
             ckpt = getattr(config, "policy_checkpoint", None)
@@ -74,6 +75,16 @@ class TorchPolicy:
         self._build_from_cfg(dict(cfg or {}), int(seed))
 
     # ------------------------------------------------------------- construction
+    def _refresh_embed(self) -> None:
+        """Drives are embedded in ``x`` when the net expects the full width.
+
+        RDA backbones always read the drive vector from the trailing obs dims
+        (``_policy_in_dim`` returns ``obs_dim(with_drives=True)``), so their
+        encoder must append drives. Non-RDA film backbones receive drives via
+        a separate film port and expect ``x`` at the plain observation width.
+        """
+        self._embed_drives = self._in_dim == obs_dim(with_drives=True)
+
     def _build_from_cfg(self, cfg: dict[str, Any], seed: int) -> None:
         from simlab.training.backbones import BACKBONES
 
@@ -92,6 +103,7 @@ class TorchPolicy:
             n_drives=self._n_drives,
             **kwargs,
         )
+        self._refresh_embed()
 
     def _build_from_arch(self, arch: dict[str, Any]) -> None:
         from simlab.training.backbones import BACKBONES
@@ -109,6 +121,7 @@ class TorchPolicy:
             n_drives=self._n_drives,
             **kwargs,
         )
+        self._refresh_embed()
 
     # ------------------------------------------------------------- checkpoint
     def _load_checkpoint(self, path: Path) -> None:
@@ -190,7 +203,9 @@ class TorchPolicy:
 
     # ------------------------------------------------------------- inference
     def _encode(self, obs: Any, drive_state: Any) -> Any:
-        if self._fusion == "concat":
+        if self._embed_drives:
+            x = encode_observation(obs, drive_state)
+        elif self._fusion == "concat":
             drives = drive_state if self._with_drives else None
             x = encode_observation(obs, drives)
         else:
@@ -223,6 +238,38 @@ class TorchPolicy:
         self._hidden_t[idx] = f[0]
         self._call_index += 1
         return Action(turn, thrust, eat, POLICY_NAME)
+
+    def act_batch(
+        self,
+        obs_list: list[Any],
+        drive_list: list[Any],
+    ) -> list[Action]:
+        """One batched inference forward for ``len(obs_list)`` agents.
+
+        Keeps the same hidden-state row convention as :meth:`act` (agent ``i``
+        occupies row ``i``) so the world-view worker can step every live agent
+        in a single forward pass instead of one call per agent.
+        """
+        if self._hidden_t is None:
+            self.reset(len(obs_list), self._rng)
+        t = self._t
+        xs = [self._encode(obs, drv) for obs, drv in zip(obs_list, drive_list)]
+        x = t.cat(xs, dim=0)
+        drives = [self._drive_tensor(drv) for drv in drive_list]
+        drive = None
+        if drives and all(d is not None for d in drives):
+            drive = t.cat(drives, dim=0)
+        h_prev = self._hidden_t[: len(obs_list)]
+        with t.no_grad():
+            a, _v, f = self._backbone.frame_step(x, h_prev, drive)
+        turns = t.tanh(a[:, 0])
+        thrusts = t.sigmoid(a[:, 1])
+        eats = t.sigmoid(a[:, 2]) >= 0.5
+        self._hidden_t[: len(obs_list)] = f
+        return [
+            Action(float(turns[i]), float(thrusts[i]), bool(eats[i].item()), POLICY_NAME)
+            for i in range(len(obs_list))
+        ]
 
     # --------------------------------------------------- batched (training)
     def frame_step(self, x, h, drive: Any = None):

@@ -9,6 +9,7 @@ build a policy. The panel never names a specific architecture class.
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,7 @@ class BuilderThread(QThread):
 
     finishedOk = Signal(object, object)  # (param_count, hash)
     failed = Signal(str)
+    stateChanged = Signal(str)
 
     def __init__(self, selection: dict[str, Any], parent=None) -> None:
         super().__init__(parent)
@@ -61,9 +63,13 @@ class BuilderThread(QThread):
 
     def run(self) -> None:
         try:
+            self.stateChanged.emit("Loading torch…")
             from simlab.training.arch_spec import arch_hash
             from simlab.training.torch_policy import make_policy
 
+            self.stateChanged.emit(
+                f"Building <{self._selection.get('backbone')}>…"
+            )
             policy_cfg = build_policy_cfg(self._selection)
             policy = make_policy(policy_cfg)
             self.finishedOk.emit(policy.param_count(), arch_hash(self._selection))
@@ -391,11 +397,17 @@ class ArchitectureWidget(QWidget):
         if errors:
             self.param_label.setText("; ".join(errors))
             return
+        self._build_start = time.perf_counter()
         self.param_label.setText("Building…")
         self._builder = BuilderThread(selection, self)
+        self._builder.stateChanged.connect(self._on_build_state)
         self._builder.finishedOk.connect(self._on_built)
         self._builder.failed.connect(self._on_build_failed)
         self._builder.start()
+
+    def _on_build_state(self, stage: str) -> None:
+        elapsed = time.perf_counter() - self._build_start
+        self.param_label.setText(f"{stage} ({elapsed:.1f}s)")
 
     def _validate(self, selection: dict[str, Any]) -> list[str]:
         errors: list[str] = []

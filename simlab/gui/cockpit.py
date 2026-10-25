@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -49,7 +50,7 @@ from simlab.research.experiment import (
 )
 from simlab.research.follower import FollowState, checkpoint_readable, poll_latest
 from simlab.research.gates import correlate_events, gate_stats, rail_warning
-from simlab.research.logs import curve_series
+from simlab.research.logs import curve_series, run_summary
 from simlab.research.queue import (
     PAUSE_FLAG,
     STOP_FLAG,
@@ -86,6 +87,25 @@ class ParamCountThread(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
 
+class GateTraceThread(QThread):
+    """Computes a gate trace (torch) off the GUI thread."""
+
+    done = Signal(dict)
+    failed = Signal(str)
+
+    def __init__(self, path: Path, parent=None) -> None:
+        super().__init__(parent)
+        self._path = path
+
+    def run(self) -> None:
+        try:
+            from simlab.research.replay import collect_gate_trace
+
+            self.done.emit(collect_gate_trace(self._path))
+        except Exception as exc:  # noqa: BLE001
+            self.failed.emit(f"{type(exc).__name__}: {exc}")
+
+
 def _parse_seeds(text: str) -> list[int]:
     out: list[int] = []
     for part in text.replace(";", ",").split(","):
@@ -112,6 +132,8 @@ class CockpitWidget(QWidget):
         self._follow_state = FollowState()
         self._last_checkpoint: Path | None = None
         self._gate_data: dict[str, Any] = {}
+        self._prev_steps: int | None = None
+        self._prev_t = 0.0
         self._build_ui()
 
     # ------------------------------------------------------------ UI shell
@@ -126,10 +148,19 @@ class CockpitWidget(QWidget):
         self.tabs.addTab(self._build_gates_tab(), "Gates")
         root.addWidget(self.tabs)
 
+    def _tab_header(self, title: str, hint: str) -> QLabel:
+        label = QLabel(f"{title} — {hint}")
+        label.setWordWrap(True)
+        label.setStyleSheet(f"color:{theme.MUTED}; padding:2px;")
+        return label
+
     # ------------------------------------------------------- Experiment tab
     def _build_experiment_tab(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
+        layout.addWidget(
+            self._tab_header("Experiment", "pick arms, seeds, and sizes, then save TOML")
+        )
         form = QFormLayout()
         self.exp_name = QLineEdit("rda_grid")
         self.total_steps = QSpinBox()
@@ -339,11 +370,20 @@ class CockpitWidget(QWidget):
     def _build_queue_tab(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
+        layout.addWidget(
+            self._tab_header("Queue", "launch, pause, resume, or stop a grid run")
+        )
         row = QHBoxLayout()
         self.queue_dir_label = QLabel("Queue: ‐")
         row.addWidget(self.queue_dir_label)
         self.launch_btn = QPushButton("Launch grid")
         row.addWidget(self.launch_btn)
+        self.quick_demo_btn = QPushButton("Quick demo")
+        self.quick_demo_btn.setToolTip(
+            "Launch a 20k-step rda_gru_surprise run (4 workers) and wire the "
+            "Live / Curves / Results / Gates tabs to it (about a minute)."
+        )
+        row.addWidget(self.quick_demo_btn)
         row.addStretch(1)
         layout.addLayout(row)
 
@@ -367,6 +407,7 @@ class CockpitWidget(QWidget):
         layout.addLayout(controls)
 
         self.launch_btn.clicked.connect(self._launch_grid)
+        self.quick_demo_btn.clicked.connect(self._quick_demo)
         self.pause_btn.clicked.connect(lambda: set_flag(self._queue_dir(), PAUSE_FLAG))
         self.resume_btn.clicked.connect(
             lambda: clear_flag(self._queue_dir(), PAUSE_FLAG)
@@ -410,6 +451,51 @@ class CockpitWidget(QWidget):
         self.queue_status.setText("Queue server started.")
         self._refresh_queue()
 
+    def _quick_demo(self) -> None:
+        """Launch a 20k-step demo and wire Live/Curves/Results/Gates to it."""
+        arm = Arm(
+            name="rda_gru_surprise",
+            backbone="rda_gru_surprise",
+            drive_core="rda8",
+            fusion="film",
+            obs_mode="obs_drives",
+        )
+        exp = Experiment(
+            name="quick_demo",
+            arms=[arm],
+            total_steps=20_000,
+            rollout_length=1024,
+            workers=DEFAULT_WORKERS,
+            train_seeds=[100_001],
+            dev_seeds=[0, 1, 2, 3, 4],
+            test_seeds=[],
+            eval_scenarios=["balanced"],
+            control_arm=None,
+        )
+        qdir = COCKPIT_DIR / exp.name
+        if not (qdir / "queue.json").exists():
+            QueueManager.create(qdir, exp)
+        import subprocess
+
+        self._server = subprocess.Popen(
+            [sys.executable, "-m", "simlab.research.queue", "serve", str(qdir)]
+        )
+        self.queue_dir_label.setText(f"Queue: {qdir}")
+        self.queue_status.setText(
+            "Quick demo started (20k steps, rda_gru_surprise, 4 workers)."
+        )
+        self._refresh_queue()
+        # Deterministic run dir: runs/00_<arm>_100001
+        run_dir = qdir / "runs" / f"00_{arm.name}_100001"
+        idx = self.live_run.findText(str(run_dir))
+        if idx < 0:
+            self.live_run.addItem(str(run_dir))
+            idx = self.live_run.findText(str(run_dir))
+        self.live_run.setCurrentIndex(idx)
+        self.curves_run.setEditText(str(run_dir))
+        self.follow_cb.setChecked(True)
+        self.live_status.setText(f"Following {run_dir} (demo).")
+
     def _refresh_queue(self) -> None:
         try:
             qdir = self._queue_dir()
@@ -452,7 +538,13 @@ class CockpitWidget(QWidget):
         form.addRow(self.follow_cb, self.follow_interval)
         layout.addLayout(form)
 
-        self.live_status = QLabel("Select a run directory to follow.")
+        layout.addWidget(self._tab_header("Live", "watch an active run"))
+        self.live_header = QLabel("No active run")
+        self.live_header.setStyleSheet(
+            f"color:{theme.TEXT}; font-weight:600; padding:2px;"
+        )
+        layout.addWidget(self.live_header)
+        self.live_status = QLabel("No data: launch a run in the Queue tab.")
         layout.addWidget(self.live_status)
 
         self.live_plot = pg.PlotWidget()
@@ -499,6 +591,7 @@ class CockpitWidget(QWidget):
             )
             return
         self._last_checkpoint = ckpt
+        self._update_live_header(run_dir)
         # Rebuild a learned_torch playback config for the world view. Prefer
         # the architecture stored next to the checkpoint itself so playback
         # matches the actual trained net; fall back to the queue's arm guess.
@@ -520,6 +613,26 @@ class CockpitWidget(QWidget):
         )
         self.live_status.setText(f"Loaded {ckpt.name}")
         self.playbackRequested.emit(cfg)
+
+    def _update_live_header(self, run_dir: Path) -> None:
+        summary = run_summary(run_dir)
+        steps = summary.get("env_steps", 0)
+        now = time.monotonic()
+        sps = 0.0
+        if self._prev_steps is not None and now > self._prev_t:
+            dt = now - self._prev_t
+            if dt > 0:
+                sps = (steps - self._prev_steps) / dt
+        self._prev_steps = steps
+        self._prev_t = now
+        parts = [f"Run: {run_dir.name}", f"{steps} steps"]
+        if sps > 0:
+            parts.append(f"{sps:.0f} steps/s")
+        if "iterations" in summary:
+            parts.append(f"{summary['iterations']} iters")
+        if "last_cap_pct" in summary:
+            parts.append(f"last eval {summary['last_cap_pct']:.1f}%")
+        self.live_header.setText(" | ".join(parts))
 
     def _guess_arm(self, run_dir: Path) -> Arm:
         # Find the arm from the parent queue's experiment.
@@ -554,6 +667,10 @@ class CockpitWidget(QWidget):
         row.addWidget(self.curves_refresh)
         layout.addLayout(row)
 
+        layout.addWidget(self._tab_header("Curves", "training metrics over iterations"))
+        self.curves_status = QLabel("No data: launch a run in the Queue tab.")
+        layout.addWidget(self.curves_status)
+
         self.curves_plot = pg.PlotWidget()
         self.curves_plot.setBackground(theme.PANEL)
         self.curves_plot.showGrid(x=True, y=True, alpha=0.18)
@@ -570,8 +687,10 @@ class CockpitWidget(QWidget):
         x = series["iteration"]
         y = series.get(metric, [])
         if not x or not y:
-            self.curves_plot.setTitle("No data")
+            self.curves_status.setText("No data: launch a run in the Queue tab.")
+            self.curves_plot.setTitle("")
             return
+        self.curves_status.setText(f"{len(y)} iterations of {metric}")
         self.curves_plot.plot(x, y, pen=pg.mkPen(theme.ACCENT, width=2), name=metric)
 
     # ------------------------------------------------------- Results tab
@@ -588,9 +707,12 @@ class CockpitWidget(QWidget):
         row.addWidget(self.results_csv)
         layout.addLayout(row)
 
+        layout.addWidget(self._tab_header("Results", "aggregated per-seed evals"))
         self.results_table = QTableWidget(0, 0)
         layout.addWidget(self.results_table, 1)
-        self.results_status = QLabel("Load per-seed eval results (JSON) to aggregate.")
+        self.results_status = QLabel(
+            "No data: launch a run in the Queue tab, then load eval files."
+        )
         layout.addWidget(self.results_status)
 
         self._results_rows: dict[str, list] = {}
@@ -691,13 +813,16 @@ class CockpitWidget(QWidget):
         row.addStretch(1)
         layout.addLayout(row)
 
+        layout.addWidget(self._tab_header("Gates", "retention diagnostics"))
         self.gates_plot = pg.PlotWidget()
         self.gates_plot.setBackground(theme.PANEL)
         self.gates_plot.showGrid(x=True, y=True, alpha=0.18)
         self.gates_plot.addLegend()
         layout.addWidget(self.gates_plot, 1)
 
-        self.gates_status = QLabel("No gate data loaded.")
+        self.gates_status = QLabel(
+            "No gate data: load a checkpoint or follow a run to compute a trace."
+        )
         layout.addWidget(self.gates_status)
 
         self.gates_checkpoint.clicked.connect(self._load_gate_checkpoint)
@@ -760,11 +885,10 @@ class CockpitWidget(QWidget):
         )
         if not path:
             return
-        try:
-            from simlab.research.replay import collect_gate_trace
-
-            gate = collect_gate_trace(path)
-        except Exception as exc:  # noqa: BLE001
-            self.gates_status.setText(f"Trace failed: {exc}")
-            return
-        self.set_gate_data(gate)
+        self.gates_status.setText("Computing gate trace…")
+        self._gate_thread = GateTraceThread(Path(path), self)
+        self._gate_thread.done.connect(self.set_gate_data)
+        self._gate_thread.failed.connect(
+            lambda msg: self.gates_status.setText(f"Trace failed: {msg}")
+        )
+        self._gate_thread.start()

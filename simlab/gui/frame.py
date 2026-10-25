@@ -13,6 +13,7 @@ class AgentFrame:
     action: Action | None
     observation: Observation | None
     drives: tuple[float, ...]
+    retention: dict[str, float] | None = None
 
 
 @dataclass(frozen=True)

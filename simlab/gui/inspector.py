@@ -19,6 +19,12 @@ class InspectorWidget(QWidget):
         }
         for label in self._labels.values():
             self._layout.addWidget(label)
+        self._retention_labels: dict[str, QLabel] = {}
+        for name in ("E", "lam", "m", "s"):
+            label = QLabel(f"{name}: —")
+            label.hide()
+            self._retention_labels[name] = label
+            self._layout.addWidget(label)
         self._bars: dict[str, QProgressBar] = {}
         self._layout.addStretch(1)
 
@@ -30,6 +36,8 @@ class InspectorWidget(QWidget):
                 label.setText(f"{name}: —")
             for bar in self._bars.values():
                 bar.hide()
+            for label in self._retention_labels.values():
+                label.hide()
             return
         self._labels["agent"].setText(f"Agent: {state.agent_id}")
         self._labels["energy"].setText(
@@ -68,3 +76,10 @@ class InspectorWidget(QWidget):
             bar.setValue(round(100 * drives[index])) if index < len(
                 drives
             ) else bar.setValue(0)
+        retention = detail.retention if detail else None
+        for name, label in self._retention_labels.items():
+            if retention and name in retention:
+                label.setText(f"{name}: {retention[name]:.3f}")
+                label.show()
+            else:
+                label.hide()

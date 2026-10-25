@@ -1304,3 +1304,52 @@ Status: complete; committed and tagged `rda-v0.2`.
   +4+5+4+3+34 = 175 passed, 0 failed.
 - Ruff clean. `eval --compare` (Balanced 5, heuristic, dev seeds, cap 10000):
   no STALE (verdicts printed).
+
+## gui-v1 ? responsive cockpit + useful info
+
+### 1. Responsiveness
+- Policy inference removed from the GUI thread: the world-view simulator runs in a
+  worker (QThread + subprocess), batched forward per tick for all live agents
+  (`act_batch`), and the GUI renders the latest completed frame.
+- Torch threads pinned to 1 in the GUI process.
+- Status line for slow ops (Loading torch? / Building <preset>? / Applying to
+  world?) with elapsed time, window responsive during them.
+- Tick-time readout (ms/tick, ticks/s) and auto-throttle: a tick over the frame
+  budget lowers the displayed speed instead of freezing.
+- Offscreen stall test (heartbeat QTimer): all 6 presets max GUI stall 16?78 ms
+  (< 200 ms).
+
+### 2. On-screen info
+- World inspector and drive graphs show sim-side d_t for every policy.
+- Retention presets show E_t, lam_t, m_t, s_t live even untrained.
+- Every cockpit tab has an empty state ("No data: launch a run in the Queue tab")
+  and a header with active run (name, steps, steps/s, elapsed, last eval, log tail).
+- Quick demo button launches a 20k-step rda_gru_surprise run (4 workers) and
+  populates Live/Curves/Results/Gates; replays `replay.collect_gate_trace`.
+- GUI exceptions and timings logged to logs/gui.log; Help ? "Copy diagnostics"
+  copies last 200 log lines + Python/torch versions + active preset.
+
+### 3. Fixes
+- `--eval-every 0` treated as "no checkpoint evals" (no crash).
+- Deleted `plugins/architectures/exam_arch.py` if present.
+- `docs/QUICKSTART.md` written (exact GUI command + click paths).
+
+### 4. Eval-reproducibility fix (regression caught by golden tests)
+- This session introduced `act_batch` (single batched forward) and routed the
+  shared `compute_actions` through it. That changed the eval trajectory vs the
+  reference per-agent `act` (batched-matmul float diffs plus compacted hidden-row
+  mapping, amplified over 10000-step episodes), breaking the learner-v0 golden
+  pins (5.0% / median 3705, and the legacy-checkpoint hash).
+- Fix: `compute_actions` gained a keyword `batched=False`; the per-agent path is
+  the default and is used by Runner/eval/training (reproduces the goldens), and
+  the GUI world-view worker passes `batched=True` for the latency win.
+- Evidence: at rda-v0.3 the goldens pass; with routing forced to `act_batch` both
+  fail; after the fix both pass.
+
+### 5. Validation (gui-v1)
+- Per-file pytest: 33+9+7+40+2+1+2+4+14+9+8+3+4+5+4+3+34 = 182 passed, 0 failed.
+- Ruff clean. `eval --compare` (Balanced 5, heuristic, dev seeds, cap 10000):
+  no STALE.
+- 2-iteration seeded smoke (gru_legacy, seed 100000, rollout 1024, workers 4,
+  obs_only, Balanced 5) completed -> `runs/smoke_gui_v1` (final.pt, learning.csv,
+  config.json).

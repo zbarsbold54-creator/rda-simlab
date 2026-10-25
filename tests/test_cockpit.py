@@ -7,6 +7,7 @@ torch-free GUI import guarantee, and (guarded) parameter counts.
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import subprocess
@@ -513,3 +514,116 @@ def test_infer_arm_fallback_when_config_missing(tmp_path: Path) -> None:
     ckpt = tmp_path / "final.pt"
     ckpt.write_bytes(b"dummy")
     assert _infer_arm_from_checkpoint(ckpt) == {}
+
+
+# ------------------------------------------------------- gui-v1: stalls
+_STALL_PRESETS = [
+    "gru_legacy",
+    "gru",
+    "transformer",
+    "rda_gru_surprise",
+    "rda_tf_surprise",
+    "rda_gru_per_drive",
+]
+
+
+@pytest.mark.skipif(not _torch_available(), reason="torch not installed")
+@pytest.mark.parametrize("preset", _STALL_PRESETS)
+def test_gui_thread_stall_per_preset(preset: str) -> None:
+    """GUI thread must stay responsive (max stall < 200ms) during 300 ticks."""
+    import time
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from dataclasses import replace
+
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QApplication
+
+    from simlab.core.config import load_config
+    from simlab.gui.main_window import MainWindow
+    from simlab.training.arch_spec import build_policy_cfg
+
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow(seed=1, agent_count=3)
+    window.worker.set_playing(False)
+    window.show()
+    selection = {
+        "backbone": preset,
+        "drive_core": "rda8",
+        "fusion": "film",
+        "obs_mode": "obs_drives",
+        "seed": 0,
+        "backbone_config": {},
+        "drive_config": {},
+    }
+    cfg = replace(
+        load_config(),
+        policy="learned_torch",
+        drive="rda8",
+        drive_config=None,
+        policy_checkpoint=None,
+        policy_cfg=build_policy_cfg(selection),
+    )
+    heartbeat: list[float] = []
+
+    def beat() -> None:
+        heartbeat.append(time.monotonic())
+
+    timer = QTimer()
+    timer.setInterval(16)
+    timer.timeout.connect(beat)
+    timer.start()
+    window._apply_arch(cfg)
+    window.worker.request_steps(300)
+    deadline = time.monotonic() + 60.0
+    while (
+        window.worker.latest_snapshot.step < 300
+        and time.monotonic() < deadline
+    ):
+        app.processEvents()
+        time.sleep(0.005)
+    timer.stop()
+    max_stall = max(
+        (b - a for a, b in itertools.pairwise(heartbeat)), default=0.0
+    )
+    window.close()
+    app.processEvents()
+    assert window.worker.latest_snapshot.step >= 300
+    assert max_stall < 0.200, (
+        f"{preset}: max GUI stall {max_stall * 1000:.1f}ms >= 200ms"
+    )
+
+
+# ------------------------------------------------------- gui-v1: quick demo
+def test_quick_demo_wires_tabs() -> None:
+    """Quick demo launches a valid run and wires Live/Curves/Gates to it."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    import subprocess as _sp
+
+    from PySide6.QtWidgets import QApplication
+
+    from simlab.gui.cockpit import CockpitWidget
+
+    app = QApplication.instance() or QApplication([])
+    widget = CockpitWidget(None)
+    spawned: list[list[str]] = []
+    original_popen = _sp.Popen
+
+    class _StubPopen:
+        def __init__(self, args, **kwargs):
+            spawned.append(list(args))
+            self.pid = 424242
+
+    _sp.Popen = _StubPopen  # type: ignore[assignment]
+    try:
+        widget._quick_demo()
+    finally:
+        _sp.Popen = original_popen
+    assert spawned, "expected queue serve subprocess launch"
+    assert any("serve" in a for a in spawned)
+    assert widget.follow_cb.isChecked()
+    assert widget.live_run.currentText().endswith("00_rda_gru_surprise_100001")
+    assert "quick_demo" in widget.curves_run.currentText()
+    app.processEvents()
+    widget.deleteLater()
+    app.processEvents()

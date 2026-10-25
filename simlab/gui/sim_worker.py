@@ -16,6 +16,8 @@ from simlab.gui.worker_components import WorkerComponents
 from simlab.gui.worker_controls import WorkerControls
 from simlab.gui.worker_history import WorkerHistory
 
+_TICK_BUDGET_MS = 150.0
+
 
 class SimWorker(QObject, WorkerControls):
     """Runs simulation steps off the GUI thread and publishes immutable state."""
@@ -24,6 +26,7 @@ class SimWorker(QObject, WorkerControls):
     frameReady = Signal(object)
     historyReady = Signal(object)
     metricsReady = Signal(float, float, int, int)
+    tickTimeReady = Signal(float)
     stopped = Signal()
 
     def __init__(
@@ -44,6 +47,7 @@ class SimWorker(QObject, WorkerControls):
         self._initialize_controls()
         self._history = WorkerHistory(theme.SNAPSHOT_HISTORY, self._latest_snapshot)
         self._steps_per_second = 0.0
+        self._tick_ms = 0.0
         self._components = WorkerComponents(
             self._config,
             self._seed,
@@ -254,6 +258,10 @@ class SimWorker(QObject, WorkerControls):
                     self._wake.clear()
                     continue
 
+            if playing and self._tick_ms > _TICK_BUDGET_MS:
+                # Auto-throttle: a tick overrunning the frame budget freezes
+                # rendering, so lower the step count instead of stalling.
+                steps_to_run = min(steps_to_run, 1)
             if seek_target is not None:
                 steps_to_run = min(
                     theme.MAX_BATCH_STEPS,
@@ -262,12 +270,16 @@ class SimWorker(QObject, WorkerControls):
             steps_to_run += step_budget
             checkpoint_snapshot = None
             for _ in range(steps_to_run):
+                _t0 = time.perf_counter()
                 advanced = self._advance_one_step()
                 if advanced is None:
                     break
                 _actions, details, result, checkpoint_snapshot = advanced
                 latest_details = details
                 window_steps += 1
+                self._tick_ms = self._tick_ms * 0.9 + (
+                    (time.perf_counter() - _t0) * 1000.0 * 0.1
+                )
                 if result.terminated:
                     seek_target = None
                     with self._lock:
@@ -303,6 +315,7 @@ class SimWorker(QObject, WorkerControls):
                 self.metricsReady.emit(
                     rate, float(now - last_metrics), current_step, current_seed
                 )
+                self.tickTimeReady.emit(self._tick_ms)
                 window_steps = 0
                 last_metrics = now
             if playing and speed == "Max":

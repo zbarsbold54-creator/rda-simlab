@@ -35,6 +35,8 @@ def compute_actions(
     policy: Any,
     drive_core: Any,
     step: int,
+    *,
+    batched: bool = False,
 ) -> tuple[dict[str, Action], dict[str, tuple[float, ...]], dict[str, Observation]]:
     """Compute per-agent actions for the current world state.
 
@@ -48,6 +50,11 @@ def compute_actions(
         policy: A registered Policy instance (or None).
         drive_core: A registered DriveCore instance (or None).
         step: The current simulation step index.
+        batched: If True and the policy exposes ``act_batch``, run one
+            batched forward across all live agents instead of one per-agent
+            call. The per-agent path (default) is the reference implementation
+            and is used for evaluation/training reproducibility; the batched
+            path is a latency optimization for GUI world-view workers.
 
     Returns:
         A tuple of ``(actions, drives, observations)``.
@@ -68,10 +75,11 @@ def compute_actions(
             for index, agent_id in enumerate(live_ids)
         }
     actions: dict[str, Action] = {}
-    for agent_id in live_ids:
-        if policy is None:
+    if policy is None:
+        for agent_id in live_ids:
             actions[agent_id] = Action()
-        elif hasattr(policy, "select_action"):
+    elif hasattr(policy, "select_action"):
+        for agent_id in live_ids:
             state = world._agents[agent_id]
             world_state = {
                 "food_locations": [
@@ -88,7 +96,14 @@ def compute_actions(
             actions[agent_id] = policy.select_action(
                 state, world_state, [], step
             )
-        else:
+    elif batched and hasattr(policy, "act_batch"):
+        # One batched forward for all live agents (single inference call).
+        live_obs = [observations[agent_id] for agent_id in live_ids]
+        live_drives = [drives.get(agent_id, ()) for agent_id in live_ids]
+        batch = policy.act_batch(live_obs, live_drives)
+        actions = dict(zip(live_ids, batch))
+    else:
+        for agent_id in live_ids:
             actions[agent_id] = policy.act(
                 observations[agent_id], drives.get(agent_id, ())
             )

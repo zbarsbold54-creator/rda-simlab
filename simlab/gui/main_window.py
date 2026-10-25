@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import platform
 import time
 from collections import OrderedDict
 from pathlib import Path
@@ -32,6 +34,8 @@ from simlab.gui.sim_worker import SimWorker
 from simlab.gui.toolbar import SessionToolbar, SimulationToolbar
 from simlab.gui.world_view import WorldView
 
+_GUI_LOG = Path("logs") / "gui.log"
+
 
 class MainWindow(QMainWindow):
     def __init__(self, seed: int = 1, agent_count: int | None = None) -> None:
@@ -60,8 +64,10 @@ class MainWindow(QMainWindow):
         self._render_fps = 0.0
         self._last_fps_time = time.perf_counter()
         self._step_rate = 0.0
+        self._tick_ms = 0.0
         self._step = 0
         self._seed = seed
+        self._setup_logging()
         self._thread = QThread(self)
         config = load_config()
         self.worker = SimWorker(config, seed, agents=agent_count)
@@ -100,6 +106,7 @@ class MainWindow(QMainWindow):
         self.worker.frameReady.connect(self._accept_frame)
         self.worker.historyReady.connect(self._accept_history)
         self.worker.metricsReady.connect(self._accept_metrics)
+        self.worker.tickTimeReady.connect(self._accept_tick)
         self.worker.stopped.connect(self._thread.quit)
         self.toolbar.playPause.connect(
             self.worker.set_playing, Qt.ConnectionType.DirectConnection
@@ -134,6 +141,8 @@ class MainWindow(QMainWindow):
             "Research Cockpit", self._toggle_cockpit
         )
         self._show_cockpit_action.setCheckable(True)
+        help_menu = self.menuBar().addMenu("&Help")
+        help_menu.addAction("Copy diagnostics", self._copy_diagnostics)
         self._timer = QTimer(self)
         self._timer.setInterval(theme.TIMER_INTERVAL_MS)
         self._timer.timeout.connect(self._render_latest)
@@ -152,6 +161,41 @@ class MainWindow(QMainWindow):
         self._status_inset.setFixedWidth(theme.STATUS_TEXT_INSET)
         status_bar.addWidget(self._status_inset)
         status_bar.addWidget(self.status_label, 1)
+
+    def _setup_logging(self) -> None:
+        try:
+            _GUI_LOG.parent.mkdir(parents=True, exist_ok=True)
+            handler = logging.FileHandler(_GUI_LOG, encoding="utf-8")
+        except OSError:
+            return
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        logger = logging.getLogger("simlab.gui")
+        logger.setLevel(logging.WARNING)
+        logger.addHandler(handler)
+
+    def _accept_tick(self, ms: float) -> None:
+        self._tick_ms = ms
+
+    def _copy_diagnostics(self) -> None:
+        lines = []
+        try:
+            if _GUI_LOG.exists():
+                tail = _GUI_LOG.read_text(encoding="utf-8").splitlines()[-200:]
+                lines.extend(tail)
+        except OSError:
+            pass
+        try:
+            import torch
+
+            torch_ver = torch.__version__
+        except Exception:  # noqa: BLE001
+            torch_ver = "not installed"
+        lines.append("")
+        lines.append(f"Python: {platform.python_version()}")
+        lines.append(f"Torch: {torch_ver}")
+        lines.append(f"Active preset/policy: {getattr(self._config, 'policy', '?')}")
+        QApplication.clipboard().setText("\n".join(lines))
+        self.status_label.setText("Diagnostics copied to clipboard.")
 
     def _accept_snapshot(self, snapshot) -> None:
         self._step = snapshot.step
@@ -213,6 +257,7 @@ class MainWindow(QMainWindow):
 
     def _apply_arch(self, config) -> None:
         self._config = config
+        self.status_label.setText("Applying to world…")
         self._frame_history.clear()
         self._snapshot_history.clear()
         self.worker.request_scenario(self._seed, config)
@@ -289,7 +334,8 @@ class MainWindow(QMainWindow):
         selected_count = sum(state.alive for state in snapshot.agent_states.values())
         self.status_label.setText(
             f"Step {self._step} | Sim time {sim_time:.1f}s | "
-            f"Render {self._render_fps:.1f} FPS | Sim {self._step_rate:.1f} steps/s | Seed {self._seed} | Alive {selected_count}"
+            f"Render {self._render_fps:.1f} FPS | Sim {self._step_rate:.1f} steps/s | "
+            f"{self._tick_ms:.0f} ms/tick | Seed {self._seed} | Alive {selected_count}"
         )
 
     def closeEvent(self, event) -> None:

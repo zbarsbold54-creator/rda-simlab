@@ -715,7 +715,8 @@ class PPOTrainer:
                 "it=%d env=%d return=%.3f entropy=%.3f kl=%.4f vloss=%.3f",
                 it, env_steps, row["mean_return"], row["entropy"], row["approx_kl"], row["value_loss"],
             )
-            if (it + 1) % self.cfg.eval_every == 0:
+            # eval_every == 0 means "no checkpoint evals" (not a crash).
+            if self.cfg.eval_every and (it + 1) % self.cfg.eval_every == 0:
                 self._quick_eval(it)
         self._save_checkpoint(self.out_dir / "final.pt")
         self.stop()
