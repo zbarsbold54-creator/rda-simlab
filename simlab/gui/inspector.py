@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+import pyqtgraph as pg
 from PySide6.QtWidgets import QLabel, QProgressBar, QVBoxLayout, QWidget
 
 from simlab.gui import theme
@@ -15,7 +17,16 @@ class InspectorWidget(QWidget):
         self._layout.setContentsMargins(*([theme.DOCK_MARGIN] * 4))
         self._labels = {
             name: QLabel(f"{name}: —")
-            for name in ("agent", "energy", "health", "age", "action", "sensors")
+            for name in (
+                "agent",
+                "energy",
+                "health",
+                "age",
+                "action",
+                "sensors",
+                "food",
+                "death",
+            )
         }
         for label in self._labels.values():
             self._layout.addWidget(label)
@@ -26,6 +37,16 @@ class InspectorWidget(QWidget):
             self._retention_labels[name] = label
             self._layout.addWidget(label)
         self._bars: dict[str, QProgressBar] = {}
+        self._energy_plot = pg.PlotWidget()
+        self._energy_plot.setBackground(theme.PANEL)
+        self._energy_plot.showGrid(x=True, y=True, alpha=0.18)
+        self._energy_plot.setLabel("left", "energy")
+        self._energy_plot.setLabel("bottom", "step")
+        self._energy_plot.setFixedHeight(120)
+        self._energy_line = self._energy_plot.plot(
+            pen=pg.mkPen(theme.ENERGY_HIGH, width=2)
+        )
+        self._layout.addWidget(self._energy_plot)
         self._layout.addStretch(1)
 
     def set_agent(self, frame: SimulationFrame, agent_id: str | None) -> None:
@@ -38,7 +59,20 @@ class InspectorWidget(QWidget):
                 bar.hide()
             for label in self._retention_labels.values():
                 label.hide()
+            self._energy_plot.hide()
             return
+        self._energy_plot.show()
+        self._labels["food"].setText(f"Food eaten: {state.food_eaten}")
+        death = frame.deaths.get(state.agent_id)
+        self._labels["death"].setText(
+            f"Status: died at step {death[0]} ({death[1]})" if death else "Status: alive"
+        )
+        series = frame.energies.get(state.agent_id)
+        if series and len(series) > 1:
+            points = np.asarray(series, dtype=np.float64)
+            self._energy_line.setData(points[:, 0], points[:, 1])
+        else:
+            self._energy_line.setData([], [])
         self._labels["agent"].setText(f"Agent: {state.agent_id}")
         self._labels["energy"].setText(
             f"Energy: {state.energy:.1f} / {state.max_energy:.1f}"

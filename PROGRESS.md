@@ -1353,3 +1353,53 @@ Status: complete; committed and tagged `rda-v0.2`.
 - 2-iteration seeded smoke (gru_legacy, seed 100000, rollout 1024, workers 4,
   obs_only, Balanced 5) completed -> `runs/smoke_gui_v1` (final.pt, learning.csv,
   config.json).
+
+## gui-v1.1 - active policy banner, Apply switches, per-agent info
+
+### 1. Active policy banner (world view + Architecture dock)
+- Shows policy name, preset/backbone/drive core/fusion/obs mode, parameter count,
+  architecture hash, and TRAINED vs UNTRAINED (checkpoint path + training step when
+  a checkpoint is loaded).
+- Untrained networks also show a warning: "Untrained (random weights): behaves
+  roughly randomly. Train it from the Queue tab, then load the checkpoint."
+- Data comes from `TorchPolicy.metadata()` (torch-free) merged into
+  `WorkerComponents.policy_info()`; the worker emits `policyInfoReady` and the
+  main window fans it out to both banners.
+
+### 2. Apply switches policy (verified, offscreen)
+- New `tests/test_gui_v11.py::test_apply_switches_policy_actions_differ`: same
+  Hard world, same seed 0, same 200 ticks; per-policy action seq via
+  `compute_actions(... batched=True)`.
+- Actions-differ fraction table (row vs column):
+
+| policy | heuristic | gru_legacy_init1 | gru_legacy_init2 | transformer | rda_gru_surprise |
+|---|---|---|---|---|---|
+| heuristic | 0.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| gru_legacy_init1 | 1.000 | 0.000 | 1.000 | 1.000 | 1.000 |
+| gru_legacy_init2 | 1.000 | 1.000 | 0.000 | 1.000 | 1.000 |
+| transformer | 1.000 | 1.000 | 1.000 | 0.000 | 1.000 |
+| rda_gru_surprise | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 |
+
+- Heuristic vs every net: 1.000; net vs net with different init seed (gru_legacy
+  1 vs 2): 1.000. Both guarantees hold.
+
+### 3. One-agent Hard world seed 0 playout (200 ticks)
+- heuristic: alive at step 200, food_eaten 8, no death.
+- untrained gru_legacy (init seed 1): alive at step 200, food_eaten 0, no death.
+
+### 4. World-view info + Load checkpoint
+- Per-agent info (energy, food eaten, death step/cause) always visible (incl. when
+  paused) plus a small energy-over-time plot for the selected agent
+  (`world_view._draw_agent_panel`, `inspector` energy plot). Death cause inferred:
+  "starvation" if energy <= 0 else "hazard".
+- "Load checkpoint…" button in the Architecture dock opens runs/; a loader thread
+  (`_CheckpointLoaderThread`) lazily imports torch, loads the checkpoint, restores
+  the architecture from the stored arch config (`_selection_from_arch`), and
+  applies it via `_apply_with_checkpoint` (policy_checkpoint set, policy_cfg None).
+
+### 5. Validation (gui-v1.1)
+- Per-file pytest: 33+9+7+40+2+1+2+4+14+9+5+8+3+4+5+4+3+34 = 187 passed, 0 failed.
+- Ruff clean (`ruff check simlab tests`).
+- `eval --compare` (Balanced 5, heuristic, dev seeds, cap 10000): no STALE.
+- No training run beyond unit tests this phase (no 2-iteration smoke; training
+  code untouched).

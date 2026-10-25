@@ -77,6 +77,30 @@ class BuilderThread(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
 
+class _CheckpointLoaderThread(QThread):
+    """Reads a checkpoint's stored architecture config off the GUI thread."""
+
+    loaded = Signal(object, object, object)  # (arch, with_drives, step)
+    failed = Signal(str)
+    stateChanged = Signal(str)
+
+    def __init__(self, path: str | Path, parent=None) -> None:
+        super().__init__(parent)
+        self._path = Path(path)
+
+    def run(self) -> None:
+        try:
+            self.stateChanged.emit("Loading checkpoint…")
+            from simlab.training.torch_policy import TorchPolicy
+
+            policy = TorchPolicy()
+            policy._load_checkpoint(self._path)
+            config = policy.config_dict()
+            self.loaded.emit(config, policy._with_drives, policy._train_step)
+        except Exception as exc:  # noqa: BLE001
+            self.failed.emit(f"{type(exc).__name__}: {exc}")
+
+
 class _ProcessLauncher(QWidget):
     """Streams a train/eval subprocess into a log view."""
 
@@ -179,15 +203,21 @@ class ArchitectureWidget(QWidget):
         self.param_label = QLabel("Not built")
         root.addWidget(self.param_label)
 
+        self._policy_label = QLabel("No policy applied")
+        self._policy_label.setWordWrap(True)
+        root.addWidget(self._policy_label)
+
         row = QHBoxLayout()
         self.rescan_button = QPushButton("Rescan")
         self.template_button = QPushButton("New architecture template")
         self.build_button = QPushButton("Build")
         self.apply_button = QPushButton("Apply to world")
+        self.load_ckpt_button = QPushButton("Load checkpoint…")
         row.addWidget(self.rescan_button)
         row.addWidget(self.template_button)
         row.addWidget(self.build_button)
         row.addWidget(self.apply_button)
+        row.addWidget(self.load_ckpt_button)
         root.addLayout(row)
 
         row2 = QHBoxLayout()
@@ -225,6 +255,7 @@ class ArchitectureWidget(QWidget):
         self.save_button.clicked.connect(self._save)
         self.load_button.clicked.connect(self._load)
         self.checkpoint_button.clicked.connect(self._pick_checkpoint)
+        self.load_ckpt_button.clicked.connect(self._load_checkpoint_and_apply)
         self.train_button.clicked.connect(self._launch_train)
         self.eval_button.clicked.connect(self._launch_eval)
 
@@ -453,6 +484,90 @@ class ArchitectureWidget(QWidget):
         if path:
             self._checkpoint_path = path
             self.param_label.setText(f"Checkpoint: {path}")
+
+    def set_policy_info(self, info: dict | None) -> None:
+        if not info:
+            self._policy_label.setText("No policy applied")
+            return
+        lines = [
+            f"Policy: {info.get('name')}",
+            (
+                f"{info.get('backbone')} / {info.get('drive_core')} / "
+                f"{info.get('fusion')} / {info.get('obs_mode')}"
+            ),
+            f"params: {info.get('param_count')}  arch:{str(info.get('arch_hash'))[:8]}",
+        ]
+        if info.get("trained"):
+            lines.append("TRAINED")
+            if info.get("checkpoint_path"):
+                lines.append(f"  {info.get('checkpoint_path')}")
+            if info.get("train_step") is not None:
+                lines.append(f"  (step {info.get('train_step')})")
+        else:
+            lines.append("UNTRAINED (random weights) — train from the Queue tab")
+        self._policy_label.setText("\n".join(lines))
+
+    def _load_checkpoint_and_apply(self) -> None:
+        RUNS_DIR.mkdir(parents=True, exist_ok=True)
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load checkpoint", str(RUNS_DIR), "PyTorch (*.pt)"
+        )
+        if not path:
+            return
+        self.param_label.setText("Loading checkpoint…")
+        self._ckpt_loader = _CheckpointLoaderThread(path, self)
+        self._ckpt_loader.stateChanged.connect(self._on_build_state)
+        self._ckpt_loader.loaded.connect(self._on_ckpt_loaded)
+        self._ckpt_loader.failed.connect(self._on_ckpt_failed)
+        self._ckpt_loader.start()
+
+    def _on_ckpt_loaded(self, config: dict, with_drives: bool, step: object) -> None:
+        selection = self._selection_from_arch(config, with_drives)
+        self._restore_selection(selection)
+        self._checkpoint_path = str(self._ckpt_loader._path)
+        label = f"Checkpoint: {self._checkpoint_path}"
+        if step is not None:
+            label += f"  (step {step})"
+        self.param_label.setText(label)
+        self._apply_with_checkpoint()
+
+    def _on_ckpt_failed(self, msg: str) -> None:
+        self.param_label.setText(f"Checkpoint load failed: {msg}")
+
+    def _selection_from_arch(
+        self, config: dict, with_drives: bool
+    ) -> dict[str, Any]:
+        backbone = config.get("backbone", self.backbone.currentText())
+        fusion = str(config.get("fusion", self.fusion.currentText()))
+        kwargs = {
+            key: value
+            for key, value in config.items()
+            if key not in ("backbone", "fusion")
+        }
+        return {
+            "backbone": backbone,
+            "drive_core": self.drive.currentText(),
+            "fusion": fusion,
+            "obs_mode": "obs_drives" if with_drives else "obs_only",
+            "seed": 0,
+            "backbone_config": kwargs,
+            "drive_config": {},
+        }
+
+    def _apply_with_checkpoint(self) -> None:
+        ckpt = self._checkpoint_path
+        if not ckpt:
+            return
+        base = self._config
+        cfg = replace(
+            base,
+            policy="learned_torch",
+            drive=self.drive.currentText(),
+            drive_config=dict(self._selection.get("drive_config")) or None,
+            policy_checkpoint=ckpt,
+            policy_cfg=None,
+        )
+        self.playbackRequested.emit(cfg)
 
     def _save(self) -> None:
         RUNS_DIR.mkdir(parents=True, exist_ok=True)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from simlab.core.types import Action, Observation, Snapshot
 
@@ -21,3 +21,7 @@ class SimulationFrame:
     snapshot: Snapshot
     agents: Mapping[str, AgentFrame]
     drive_names: tuple[str, ...]
+    # agent_id -> (death_step, cause)
+    deaths: Mapping[str, tuple[int, str]] = field(default_factory=dict)
+    # agent_id -> ((step, energy), ...) bounded series for the selected agent plot
+    energies: Mapping[str, tuple[tuple[int, float], ...]] = field(default_factory=dict)

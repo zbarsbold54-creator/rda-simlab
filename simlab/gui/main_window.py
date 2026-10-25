@@ -107,6 +107,7 @@ class MainWindow(QMainWindow):
         self.worker.historyReady.connect(self._accept_history)
         self.worker.metricsReady.connect(self._accept_metrics)
         self.worker.tickTimeReady.connect(self._accept_tick)
+        self.worker.policyInfoReady.connect(self._accept_policy_info)
         self.worker.stopped.connect(self._thread.quit)
         self.toolbar.playPause.connect(
             self.worker.set_playing, Qt.ConnectionType.DirectConnection
@@ -304,6 +305,10 @@ class MainWindow(QMainWindow):
         self._frame_history.clear()
         self._snapshot_history.clear()
         self.worker.request_restore(snapshot)
+
+    def _accept_policy_info(self, info) -> None:
+        self.world_view.set_policy_info(info)
+        self.arch.set_policy_info(info)
 
     def _accept_metrics(
         self, steps_per_second: float, elapsed: float, step: int, seed: int

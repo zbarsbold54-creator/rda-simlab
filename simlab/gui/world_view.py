@@ -56,6 +56,7 @@ class WorldView(QWidget):
         }
         self._follow_selected = False
         self._trails: dict[str, list[tuple[float, float]]] = {}
+        self._policy_info: dict | None = None
         self.setMouseTracking(True)
         self.setMinimumSize(theme.VIEW_MIN_WIDTH, theme.VIEW_MIN_HEIGHT)
 
@@ -282,7 +283,151 @@ class WorldView(QWidget):
             painter.drawPath(self._rounded_triangle(points))
 
         painter.restore()
+        self._draw_banner(painter)
+        self._draw_agent_panel(painter)
         painter.end()
+
+    def set_policy_info(self, info: dict | None) -> None:
+        self._policy_info = info
+        self.update()
+
+    def _draw_banner(self, painter: QPainter) -> None:
+        info = self._policy_info
+        if not info:
+            return
+        margin = theme.DOCK_MARGIN
+        x = margin
+        y = margin
+        width = min(540, self.width() - 2 * margin)
+        lines: list[str] = []
+        name = str(info.get("name", "policy"))
+        lines.append(f"Policy: {name}")
+        details = " | ".join(
+            str(info[key])
+            for key in ("preset", "backbone", "drive_core", "fusion", "obs_mode")
+            if info.get(key)
+        )
+        if details:
+            lines.append(details)
+        params = info.get("param_count")
+        arch_hash = info.get("arch_hash")
+        arch_line = f"params: {params}" if params is not None else "params: ?"
+        if arch_hash:
+            arch_line += f"  arch:{str(arch_hash)[:8]}"
+        lines.append(arch_line)
+        trained = bool(info.get("trained"))
+        checkpoint_path = info.get("checkpoint_path")
+        train_step = info.get("train_step")
+        if trained:
+            status = "TRAINED"
+            if checkpoint_path:
+                status += f"  {checkpoint_path}"
+            if train_step is not None:
+                status += f"  (step {train_step})"
+        else:
+            status = "UNTRAINED"
+            if checkpoint_path:
+                status += "  checkpoint not loaded"
+        lines.append(status)
+        font = painter.font()
+        font.setPointSize(theme.UI_FONT_SIZE_PT)
+        painter.setFont(font)
+        line_height = round(font.pointSizeF() * 1.6)
+        total_height = line_height * len(lines) + 2 * margin
+        rect = QRectF(x, y, width, total_height)
+        painter.setPen(QPen(QColor(theme.BANNER_BORDER), 1.0))
+        painter.setBrush(QColor(theme.BANNER_BG))
+        painter.drawRoundedRect(rect, theme.PANEL_RADIUS, theme.PANEL_RADIUS)
+        text_color = QColor(theme.TEXT)
+        warning = not trained
+        for index, text in enumerate(lines):
+            painter.setPen(warning if index == len(lines) - 1 and warning else text_color)
+            label_y = y + margin + index * line_height
+            painter.drawText(
+                QRectF(x + margin, label_y, width - 2 * margin, line_height),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                text,
+            )
+        if not trained:
+            painter.setPen(QColor(theme.WARNING))
+            painter.drawText(
+                QRectF(
+                    x + margin,
+                    y + margin + len(lines) * line_height,
+                    width - 2 * margin,
+                    line_height,
+                ),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                "Untrained (random weights): behaves roughly randomly. "
+                "Train it from the Queue tab, then load the checkpoint.",
+            )
+
+    def _draw_agent_panel(self, painter: QPainter) -> None:
+        frame = self._frame
+        snapshot = self._snapshot
+        selected = self._selected_agent
+        if frame is None or snapshot is None or not selected:
+            return
+        state = snapshot.agent_states.get(selected)
+        if state is None:
+            return
+        margin = theme.DOCK_MARGIN
+        panel_width = 240
+        x = self.width() - panel_width - margin
+        y = margin
+        lines: list[str] = []
+        lines.append(f"Agent: {selected}")
+        lines.append(f"energy: {state.energy:.1f} / {state.max_energy:.0f}")
+        lines.append(f"food eaten: {state.food_eaten}")
+        death = frame.deaths.get(selected)
+        if death is not None:
+            step, cause = death
+            lines.append(f"died step {step} ({cause})")
+        else:
+            lines.append("alive")
+        font = painter.font()
+        font.setPointSize(theme.UI_FONT_SIZE_PT)
+        painter.setFont(font)
+        line_height = round(font.pointSizeF() * 1.6)
+        text_height = line_height * len(lines) + 2 * margin
+        series = frame.energies.get(selected)
+        has_series = bool(series) and len(series) > 1
+        plot_height = 70 if has_series else 0
+        total_height = text_height + plot_height
+        rect = QRectF(x, y, panel_width, total_height)
+        painter.setPen(QPen(QColor(theme.BANNER_BORDER), 1.0))
+        painter.setBrush(QColor(theme.BANNER_BG))
+        painter.drawRoundedRect(rect, theme.PANEL_RADIUS, theme.PANEL_RADIUS)
+        painter.setPen(QColor(theme.TEXT))
+        for index, text in enumerate(lines):
+            label_y = y + margin + index * line_height
+            painter.drawText(
+                QRectF(x + margin, label_y, panel_width - 2 * margin, line_height),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                text,
+            )
+        if has_series:
+            plot_top = y + margin + len(lines) * line_height
+            points = list(series)
+            steps = [p[0] for p in points]
+            values = [p[1] for p in points]
+            min_s, max_s = min(steps), max(steps)
+            min_v, max_v = min(values), max(values)
+            span_s = (max_s - min_s) or 1.0
+            span_v = (max_v - min_v) or 1.0
+            plot_left = x + margin
+            plot_right = x + panel_width - margin
+            plot_bottom = plot_top + plot_height
+            painter.setPen(QPen(QColor(theme.ACCENT), 1.5))
+            path = QPainterPath()
+            for idx, (step_value, value) in enumerate(points):
+                px = plot_left + (step_value - min_s) / span_s * (plot_right - plot_left)
+                py = plot_bottom - (value - min_v) / span_v * (plot_bottom - plot_top)
+                if idx == 0:
+                    path.moveTo(px, py)
+                else:
+                    path.lineTo(px, py)
+            painter.drawPath(path)
 
     def _detection_ring_visible(self, index: int, hazard, selected_agent) -> bool:
         if self._hovered_hazard == index:

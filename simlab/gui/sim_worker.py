@@ -27,6 +27,7 @@ class SimWorker(QObject, WorkerControls):
     historyReady = Signal(object)
     metricsReady = Signal(float, float, int, int)
     tickTimeReady = Signal(float)
+    policyInfoReady = Signal(object)
     stopped = Signal()
 
     def __init__(
@@ -44,6 +45,10 @@ class SimWorker(QObject, WorkerControls):
         self._runner = Runner(self._config, self._seed, agents=self._agent_count)
         self._runner.setup()
         self._latest_snapshot = self._runner._world.snapshot()
+        self._death_log: dict[str, tuple[int, str]] = {}
+        self._energy_history: dict[str, list[tuple[int, float]]] = {}
+        self._last_alive: dict[str, bool] = {}
+        self._reset_tracking()
         self._initialize_controls()
         self._history = WorkerHistory(theme.SNAPSHOT_HISTORY, self._latest_snapshot)
         self._steps_per_second = 0.0
@@ -55,10 +60,48 @@ class SimWorker(QObject, WorkerControls):
             self._runner._world._rng,
         )
         self._latest_frame = None
+        deaths, energies = self._current_frame_data()
         self._latest_frame = SimulationFrame(
             self._latest_snapshot,
             MappingProxyType({}),
             self._components.drive_names,
+            deaths=deaths,
+            energies=energies,
+        )
+
+    def _reset_tracking(self) -> None:
+        """Re-derive per-agent death/energy tracking from the current world."""
+        world = self._runner._world
+        self._last_alive = {
+            agent_id: bool(state["is_alive"])
+            for agent_id, state in world._agents.items()
+        }
+        self._death_log = {}
+        self._energy_history = {
+            agent_id: [(self._runner._step_count, float(state["energy"]))]
+            for agent_id, state in world._agents.items()
+        }
+
+    def _update_tracking(self) -> None:
+        world = self._runner._world
+        now_alive: dict[str, bool] = {}
+        for agent_id, state in world._agents.items():
+            alive = bool(state["is_alive"])
+            now_alive[agent_id] = alive
+            series = self._energy_history.setdefault(agent_id, [])
+            series.append((self._runner._step_count, float(state["energy"])))
+            del series[:-400]
+            if not alive and self._last_alive.get(agent_id, True):
+                cause = "starvation" if state["energy"] <= 0.0 else "hazard"
+                self._death_log[agent_id] = (self._runner._step_count, cause)
+        self._last_alive = now_alive
+
+    def _current_frame_data(self) -> tuple[object, object]:
+        return (
+            MappingProxyType(dict(self._death_log)),
+            MappingProxyType(
+                {aid: tuple(series) for aid, series in self._energy_history.items()}
+            ),
         )
 
     def _advance_one_step(
@@ -87,6 +130,7 @@ class SimWorker(QObject, WorkerControls):
             include_snapshot=False,
             include_agent_states=False,
         )
+        self._update_tracking()
         checkpoint = None
         if self._runner._step_count % theme.HISTORY_SNAPSHOT_INTERVAL == 0:
             checkpoint = world.snapshot()
@@ -106,6 +150,7 @@ class SimWorker(QObject, WorkerControls):
         self.snapshotReady.emit(self.latest_snapshot)
         self.frameReady.emit(self.latest_frame)
         self.historyReady.emit(self._history.take_batch())
+        self.policyInfoReady.emit(self._components.policy_info())
 
         while True:
             now = time.perf_counter()
@@ -139,6 +184,7 @@ class SimWorker(QObject, WorkerControls):
                         self._config, requested_seed, agents=self._agent_count
                     )
                     self._runner.setup()
+                    self._reset_tracking()
                     self._latest_snapshot = self._runner._world.snapshot()
                     self._components.update_config(
                         self._config,
@@ -146,15 +192,19 @@ class SimWorker(QObject, WorkerControls):
                         self._agent_count,
                         self._runner._world._rng,
                     )
+                    deaths, energies = self._current_frame_data()
                     self._latest_frame = SimulationFrame(
                         self._latest_snapshot,
                         MappingProxyType({}),
                         self._components.drive_names,
+                        deaths=deaths,
+                        energies=energies,
                     )
                     latest_details = self._latest_frame.agents
                     self._history.reset(self._latest_snapshot)
                     step_credit = 0.0
                     window_steps = 0
+                self.policyInfoReady.emit(self._components.policy_info())
                 self.snapshotReady.emit(self.latest_snapshot)
                 self.frameReady.emit(self.latest_frame)
                 self.historyReady.emit(self._history.take_batch())
@@ -166,6 +216,7 @@ class SimWorker(QObject, WorkerControls):
                         self._config, requested_seed, agents=self._agent_count
                     )
                     self._runner.setup()
+                    self._reset_tracking()
                     self._latest_snapshot = self._runner._world.snapshot()
                     self._components.update_config(
                         self._config,
@@ -173,15 +224,19 @@ class SimWorker(QObject, WorkerControls):
                         self._agent_count,
                         self._runner._world._rng,
                     )
+                    deaths, energies = self._current_frame_data()
                     self._latest_frame = SimulationFrame(
                         self._latest_snapshot,
                         MappingProxyType({}),
                         self._components.drive_names,
+                        deaths=deaths,
+                        energies=energies,
                     )
                     latest_details = self._latest_frame.agents
                     self._history.reset(self._latest_snapshot)
                     step_credit = 0.0
                     window_steps = 0
+                self.policyInfoReady.emit(self._components.policy_info())
                 self.snapshotReady.emit(self.latest_snapshot)
                 self.frameReady.emit(self.latest_frame)
                 self.historyReady.emit(self._history.take_batch())
@@ -191,11 +246,15 @@ class SimWorker(QObject, WorkerControls):
                     replay_snapshot = self._history.replay_origin()
                     if recorded_steps and replay_snapshot is not None:
                         self._runner.restore(replay_snapshot)
+                        self._reset_tracking()
                         self._latest_snapshot = replay_snapshot
+                        deaths, energies = self._current_frame_data()
                         self._latest_frame = SimulationFrame(
                             replay_snapshot,
                             MappingProxyType({}),
                             self._components.drive_names,
+                            deaths=deaths,
+                            energies=energies,
                         )
                         self._history.replay_to(max(recorded_steps) + 1)
                         self.frameReady.emit(self._latest_frame)
@@ -209,6 +268,7 @@ class SimWorker(QObject, WorkerControls):
                     )
                     preserve_log = isinstance(requested_snapshot, SimulationFrame)
                     self._runner.restore(snapshot, preserve_action_log=preserve_log)
+                    self._reset_tracking()
                     self._agent_count = len(snapshot.agent_states)
                     self._runner._world.width = snapshot.width
                     self._runner._world.height = snapshot.height
@@ -219,6 +279,7 @@ class SimWorker(QObject, WorkerControls):
                         self._history.reset(snapshot)
                         self._runner._snapshot_manager._snapshots.clear()
                     self._latest_snapshot = snapshot
+                    deaths, energies = self._current_frame_data()
                     self._latest_frame = (
                         requested_snapshot
                         if isinstance(requested_snapshot, SimulationFrame)
@@ -226,6 +287,8 @@ class SimWorker(QObject, WorkerControls):
                             snapshot,
                             MappingProxyType({}),
                             self._components.drive_names,
+                            deaths=deaths,
+                            energies=energies,
                         )
                     )
                     latest_details = self._latest_frame.agents
@@ -295,8 +358,13 @@ class SimWorker(QObject, WorkerControls):
                 snapshot = checkpoint_snapshot
                 if snapshot is None or snapshot.step != self._runner._step_count:
                     snapshot = self._runner._world.snapshot()
+                deaths, energies = self._current_frame_data()
                 frame = SimulationFrame(
-                    snapshot, latest_details, self._components.drive_names
+                    snapshot,
+                    latest_details,
+                    self._components.drive_names,
+                    deaths=deaths,
+                    energies=energies,
                 )
                 with self._lock:
                     self._latest_snapshot = snapshot

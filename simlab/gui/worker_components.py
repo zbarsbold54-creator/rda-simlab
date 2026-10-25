@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from types import MappingProxyType
+from typing import Any
 
 import numpy as np
 
@@ -82,6 +83,33 @@ class WorkerComponents:
 
     def needs_observations(self) -> bool:
         return needs_observations(self.policy, self.drive_core)
+
+    def policy_info(self) -> dict[str, Any]:
+        """Banner metadata (torch-free) for the current worker policy."""
+        info: dict[str, Any] = {
+            "policy": self.config.policy,
+            "preset": None,
+            "backbone": None,
+            "fusion": None,
+            "obs_mode": None,
+            "param_count": None,
+            "arch_hash": None,
+            "trained": False,
+            "checkpoint_path": None,
+            "train_step": None,
+        }
+        if getattr(self, "policy", None) is not None and hasattr(
+            self.policy, "metadata"
+        ):
+            meta = self.policy.metadata()
+            info.update({k: meta[k] for k in info if k in meta})
+            info["policy"] = meta.get("name", info["policy"])
+        else:
+            info["policy"] = "heuristic"
+        info["drive_core"] = (
+            type(self.drive_core).__name__ if self.drive_core is not None else None
+        )
+        return info
 
     def _retention_rows(self, observations) -> dict[str, dict[str, float]]:
         """Per-agent retention internals (E, lam, m, s) from the policy."""

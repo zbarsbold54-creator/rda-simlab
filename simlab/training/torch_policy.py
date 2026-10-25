@@ -59,6 +59,9 @@ class TorchPolicy:
         self._fusion = "concat"
         self._embed_drives = False
         self._load_error: str | None = None
+        self._checkpoint_path: Path | None = None
+        self._trained = False
+        self._train_step: int | None = None
         if config is not None:
             ckpt = getattr(config, "policy_checkpoint", None)
             if ckpt:
@@ -143,14 +146,19 @@ class TorchPolicy:
         retention = getattr(self._backbone, "_retention", None)
         if retention is not None and data.get("retention_state_dict") is not None:
             retention.load_state_dict(data["retention_state_dict"])
+        self._checkpoint_path = path
+        self._trained = True
+        self._train_step = data.get("step") if isinstance(data.get("step"), int) else None
 
-    def save_checkpoint(self, path: str | Path) -> None:
+    def save_checkpoint(self, path: str | Path, step: int | None = None) -> None:
         data = {
             "arch": self._backbone.config_dict(),
             "in_dim": self._in_dim,
             "with_drives": self._with_drives,
             "state_dict": self._backbone._net.state_dict(),
         }
+        if step is not None:
+            data["step"] = int(step)
         retention = getattr(self._backbone, "_retention", None)
         if retention is not None:
             data["retention_state_dict"] = retention.state_dict()
@@ -169,6 +177,29 @@ class TorchPolicy:
         cfg = self._backbone.config_dict()
         cfg["obs_mode"] = "obs_drives" if self._with_drives else "obs_only"
         return cfg
+
+    def metadata(self) -> dict[str, Any]:
+        """Torch-free summary of the policy for the GUI banners/inspector."""
+        cfg = self.config_dict()
+        try:
+            from simlab.training.arch_spec import arch_hash
+
+            arch = arch_hash(cfg)
+        except Exception:  # noqa: BLE001
+            arch = ""
+        return {
+            "name": type(self).__name__,
+            "backbone": cfg.get("backbone"),
+            "fusion": cfg.get("fusion", self._fusion),
+            "obs_mode": "obs_drives" if self._with_drives else "obs_only",
+            "param_count": self.param_count(),
+            "arch_hash": arch,
+            "trained": self._trained,
+            "checkpoint_path": (
+                str(self._checkpoint_path) if self._checkpoint_path is not None else None
+            ),
+            "train_step": self._train_step,
+        }
 
     # --------------------------------------------------------------- lifecycle
     def reset(self, n_agents: int, rng: Any = None) -> None:

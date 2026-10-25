@@ -318,6 +318,7 @@ class PPOTrainer:
         self._result_q: mp.Queue | None = None
         self._procs: list[mp.Process] = []
         self._csv = None
+        self._env_steps = 0
         self._start = time.time()
         self._broadcast_it = -1
 
@@ -593,7 +594,7 @@ class PPOTrainer:
         self._csv.flush()
 
     def _save_checkpoint(self, path: Path) -> None:
-        self.policy.save_checkpoint(path)
+        self.policy.save_checkpoint(path, step=self._env_steps)
 
     def _quick_eval(self, it: int) -> None:
         from simlab.eval_lib import aggregate, run_episode_metrics
@@ -683,6 +684,7 @@ class PPOTrainer:
                     acc["worker_other"] += cpf["other"]
                 t0 = time.perf_counter()
             env_steps += self.cfg.workers * self.cfg.env_steps_per_rollout
+            self._env_steps = env_steps
             if self.cfg.update_threads is not None:
                 self.torch.set_num_threads(self.cfg.update_threads)
             info = self._ppo_update(trajs)
