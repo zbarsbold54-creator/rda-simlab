@@ -720,3 +720,49 @@ def test_missing_checkpoint_falls_back_to_fresh_policy(tmp_path: Path) -> None:
     pol = _policy_from_checkpoint(path)
     assert pol._load_error is not None
     _policy_frame_produces(pol)
+
+
+@pytest.mark.parametrize(
+    ("retention", "has_gate"),
+    [("surprise", True), ("fixed", False), ("constant", False)],
+)
+def test_collect_gate_trace_reports_documented_metrics(
+    tmp_path: Path, retention: str, has_gate: bool
+) -> None:
+    from simlab.research.replay import collect_gate_trace
+
+    policy = make_policy(
+        {
+            "backbone": f"rda_gru_{retention}",
+            "drive_core": "rda8",
+            "fusion": "film",
+            "obs_mode": "obs_drives",
+            "seed": 0,
+        }
+    )
+    checkpoint = tmp_path / f"rda_gru_{retention}.pt"
+    policy.save_checkpoint(checkpoint)
+
+    trace = collect_gate_trace(checkpoint, cap=8, seed=3, agents=1)
+
+    assert trace["ticks"] == 8
+    assert trace["steps"] == 8
+    for key in ("d", "E"):
+        assert trace[key].shape == (8, 1, N_DRIVES)
+        assert np.isfinite(trace[key]).all()
+    lam_width = 1 if has_gate else N_DRIVES
+    assert trace["lam"].shape == (8, 1, lam_width)
+    assert np.isfinite(trace["lam"]).all()
+    assert np.all(trace["lam"] >= 0.0)
+    assert np.all(trace["lam"] <= 0.9984375)
+    if has_gate:
+        for key in ("m", "s"):
+            assert trace[key].shape == (8, 1, 1)
+            assert np.isfinite(trace[key]).all()
+    else:
+        assert trace["m"].size == 0
+        assert trace["s"].size == 0
+        if retention == "constant":
+            assert np.all(trace["lam"] == 0.0)
+        else:
+            assert np.allclose(trace["lam"], 0.9)

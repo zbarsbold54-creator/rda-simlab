@@ -83,6 +83,7 @@ def collect_gate_trace(
     m: list = []
     s: list = []
     film_scale = None
+    ticks = 0
 
     steps = min(cap, MAX_COLLECT_STEPS)
     for _ in range(steps):
@@ -94,10 +95,13 @@ def collect_gate_trace(
             )
         except Exception:  # noqa: BLE001
             break
+        ticks += 1
         policy = getattr(runner, "_policy", None)
         if policy is None:
             break
-        metrics = getattr(policy, "_last_metrics", None) or {}
+        backbone = getattr(policy, "_backbone", None)
+        introspect = getattr(backbone, "introspect", None)
+        metrics = introspect() if callable(introspect) else {}
         if "E" in metrics:
             e.append(metrics["E"])
         if "d" in metrics:
@@ -114,6 +118,7 @@ def collect_gate_trace(
     out: dict[str, Any] = {
         "checkpoint": str(ckpt),
         "steps": len(e),
+        "ticks": ticks,
         "rail": 1.0,
         "d": np.asarray(d),
         "E": np.asarray(e),

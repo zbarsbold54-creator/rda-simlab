@@ -1427,3 +1427,12 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
 - New offscreen regressions: `test_drive_plot_shows_all_drives_without_selection`,
   `test_research_cockpit_visible_by_default`,
   `test_timeline_live_sync_and_scrub_to_nonrecorded_step`.
+
+### Follow-up: gate trace
+- `collect_gate_trace` read `_last_metrics` from `TorchPolicy`, but RDA records
+  per-step metrics on its backbone. The collector now uses backbone introspection
+  and reports attempted simulation ticks separately from collected metric steps.
+- 40k-step `rda_gru_surprise` and `rda_tf_per_drive` traces both collected 512
+  steps; `lam` stayed within `[0, 0.9984375]`, and `m`/`s` were finite.
+- Added coverage for surprise, fixed, and constant retention. The focused test
+  passed (3 tests); `tests/test_rda.py` passed (37 tests, 235.32s).
