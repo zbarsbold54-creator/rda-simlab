@@ -159,6 +159,37 @@ def spec_defaults(spec: ArchSpec) -> dict[str, Any]:
     return {s["name"]: s["default"] for s in spec_schema(spec)}
 
 
+def default_preset_selection(backbone: str, seed: int = 0) -> dict[str, Any]:
+    """Return the canonical GUI selection for a registered backbone preset."""
+    backbone_spec = get_spec("backbone", backbone)
+    if backbone_spec is None:
+        raise ValueError(f"unknown backbone preset {backbone!r}")
+
+    def gui_defaults(spec: ArchSpec | None) -> dict[str, Any]:
+        if spec is None:
+            return {}
+        values = spec_defaults(spec)
+        for field_spec in spec_schema(spec):
+            name = field_spec["name"]
+            if field_spec["type"] == "float" and values[name] is not None:
+                values[name] = round(float(values[name]), 4)
+        return values
+
+    is_rda = backbone.startswith("rda")
+    legacy = backbone == "gru_legacy"
+    drive_core = "rda8" if is_rda else "none"
+    drive_spec = get_spec("drive_core", drive_core)
+    return {
+        "backbone": backbone,
+        "drive_core": drive_core,
+        "fusion": "none" if legacy else ("film" if is_rda else "concat"),
+        "obs_mode": "obs_drives" if is_rda else "obs_only",
+        "seed": int(seed),
+        "backbone_config": gui_defaults(backbone_spec),
+        "drive_config": gui_defaults(drive_spec),
+    }
+
+
 def validate_config(spec: ArchSpec, values: dict[str, Any]) -> list[str]:
     """Validate a config dict against the spec alone.
 

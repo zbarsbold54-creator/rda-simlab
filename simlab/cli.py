@@ -248,9 +248,21 @@ def run_train(args: argparse.Namespace) -> int:
         cfg_kwargs["env_steps_per_rollout"] = args.rollout
     cfg = PPOConfig(**cfg_kwargs)
     if args.arch:
-        from simlab.training.arch_spec import load_arch_toml
+        from pathlib import Path
 
-        cfg.arch = load_arch_toml(args.arch)
+        from simlab.training.arch_spec import (
+            default_preset_selection,
+            get_spec,
+            load_arch_toml,
+        )
+
+        arch_path = Path(args.arch)
+        if arch_path.is_file():
+            cfg.arch = load_arch_toml(arch_path)
+        elif get_spec("backbone", args.arch) is not None:
+            cfg.arch = default_preset_selection(args.arch, seed=args.seed)
+        else:
+            cfg.arch = load_arch_toml(arch_path)
         cfg.obs_mode = cfg.arch.get("obs_mode", args.obs)
     trainer = PPOTrainer(cfg, args.out)
     trainer.train()

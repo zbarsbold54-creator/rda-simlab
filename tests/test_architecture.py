@@ -337,3 +337,46 @@ def test_eval_accepts_registered_policy():
     from simlab.cli import _validate_policy_name
 
     _validate_policy_name("learned_torch")
+
+
+def test_train_arch_accepts_registered_preset_name(tmp_path: Path) -> None:
+    import torch
+
+    from simlab.training.arch_spec import build_policy_cfg, default_preset_selection
+
+    output = tmp_path / "named_preset"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "simlab.cli",
+            "train",
+            "--arch",
+            "rda_gru_surprise",
+            "--total-steps",
+            "1024",
+            "--workers",
+            "4",
+            "--seed",
+            "100000",
+            "--rollout",
+            "256",
+            "--eval-every",
+            "0",
+            "--update-device",
+            "cpu",
+            "--out",
+            str(output),
+        ],
+        cwd=str(REPO),
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    checkpoint = torch.load(output / "final.pt", map_location="cpu", weights_only=False)
+    expected = make_policy(
+        build_policy_cfg(default_preset_selection("rda_gru_surprise", seed=100000))
+    )._backbone.config_dict()
+    assert checkpoint["arch"] == expected, result.stdout + result.stderr
+    assert checkpoint["with_drives"] is True

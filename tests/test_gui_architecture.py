@@ -183,6 +183,14 @@ def test_build_rda_variant_succeeds() -> None:
     assert widget.param_label.text().startswith("param_count=")
 
 
+def test_backbone_selection_matches_canonical_preset() -> None:
+    from simlab.training.arch_spec import default_preset_selection
+
+    widget = ArchitectureWidget(None)
+    widget.backbone.setCurrentText("rda_gru_surprise")
+    assert widget._collect() == default_preset_selection("rda_gru_surprise")
+
+
 @pytest.mark.skipif(not _torch_available(), reason="torch not installed")
 def test_checkpoint_playback_rebuilds_arch_runs_world(tmp_path) -> None:
     from simlab.core.config import load_config

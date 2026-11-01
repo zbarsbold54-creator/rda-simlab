@@ -1465,3 +1465,13 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
   Live agents moved. Start/mid/end screenshots for all six tabs are in
   `logs/gui_check` (18 nonempty PNGs).
 - `tests/test_cockpit.py`: 42 passed in 9.03s; Ruff passed.
+
+### Validation: preset CLI and housekeeping
+- `train --arch` accepts either an architecture TOML path or a registered
+  backbone name. Named presets resolve through the same canonical GUI defaults,
+  including RDA drive/fusion settings and default size matching.
+- Added CLI training and GUI-selection parity regressions. `.gitignore` now
+  includes only the requested `runs/cockpit/` and
+  `logs_headless_test_pytest.txt` entries.
+- Final per-file suite: 197 passed, 0 failed, 0 skipped across 18 files;
+  `ruff check simlab tests` passed.

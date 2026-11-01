@@ -290,14 +290,14 @@ class ArchitectureWidget(QWidget):
     def _rebuild_forms(self) -> None:
         if self.sender() is self.backbone:
             name = self.backbone.currentText()
-            if name.startswith("rda"):
-                defaults = ((self.drive, "rda8"), (self.fusion, "film"), (self.obs_mode, "obs_drives"))
-            elif name == "gru_legacy":
-                defaults = ((self.drive, "none"), (self.fusion, "none"), (self.obs_mode, "obs_only"))
-            elif name in ("gru", "transformer"):
-                defaults = ((self.drive, "none"), (self.fusion, "concat"), (self.obs_mode, "obs_only"))
-            else:
-                defaults = ()
+            from simlab.training.arch_spec import default_preset_selection
+
+            selection = default_preset_selection(name)
+            defaults = (
+                (self.drive, selection["drive_core"]),
+                (self.fusion, selection["fusion"]),
+                (self.obs_mode, selection["obs_mode"]),
+            )
             for combo, value in defaults:
                 combo.blockSignals(True)
                 combo.setCurrentText(value)

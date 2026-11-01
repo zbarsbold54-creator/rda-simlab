@@ -25,6 +25,8 @@ _*.txt
 results/
 logs/
 runs/train/
+runs/cockpit/
+logs_headless_test_pytest.txt
 runs/eval_*.json
 runs/*.pt
 *.egg-info/
