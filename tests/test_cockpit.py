@@ -114,7 +114,9 @@ def test_unknown_backbone_is_error() -> None:
 
 
 def test_toml_round_trip() -> None:
-    exp = _make_experiment(test_seeds=[1000, 1001, 1002], control_arm="rda_g1")
+    exp = _make_experiment(
+        test_seeds=[1000, 1001, 1002], control_arm="rda_g1", eval_every=2
+    )
     text = dump_experiment_toml(exp)
     tmp = REPO / "runs" / "test_roundtrip.toml"
     tmp.parent.mkdir(parents=True, exist_ok=True)
@@ -125,6 +127,12 @@ def test_toml_round_trip() -> None:
     assert loaded.arms[0].backbone == "rda_g1"
     assert loaded.test_seeds == [1000, 1001, 1002]
     assert loaded.control_arm == "rda_g1"
+    assert loaded.eval_every == 2
+
+
+def test_eval_every_cannot_be_negative() -> None:
+    errors, _ = _make_experiment(eval_every=-1).validate()
+    assert "eval_every must be >= 0" in errors
 
 
 # ------------------------------------------------------- queue resume
@@ -598,8 +606,8 @@ def test_gui_thread_stall_per_preset(preset: str) -> None:
 def test_quick_demo_wires_tabs() -> None:
     """Quick demo launches a valid run and wires Live/Curves/Gates to it."""
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    import subprocess as _sp
 
+    from PySide6.QtCore import QProcess
     from PySide6.QtWidgets import QApplication
 
     from simlab.gui.cockpit import CockpitWidget
@@ -607,19 +615,17 @@ def test_quick_demo_wires_tabs() -> None:
     app = QApplication.instance() or QApplication([])
     widget = CockpitWidget(None)
     spawned: list[list[str]] = []
-    original_popen = _sp.Popen
+    original_start = QProcess.start
 
-    class _StubPopen:
-        def __init__(self, args, **kwargs):
-            spawned.append(list(args))
-            self.pid = 424242
+    def stub_start(process, program, arguments=None):
+        spawned.append([program, *(arguments or [])])
 
-    _sp.Popen = _StubPopen  # type: ignore[assignment]
+    QProcess.start = stub_start
     try:
         widget._quick_demo()
     finally:
-        _sp.Popen = original_popen
-    assert spawned, "expected queue serve subprocess launch"
+        QProcess.start = original_start
+    assert spawned, "expected QProcess queue server launch"
     assert any("serve" in a for a in spawned)
     assert widget.follow_cb.isChecked()
     assert widget.live_run.currentText().endswith("00_rda_gru_surprise_100001")
@@ -627,3 +633,49 @@ def test_quick_demo_wires_tabs() -> None:
     app.processEvents()
     widget.deleteLater()
     app.processEvents()
+
+
+def test_queue_launch_wires_live_and_curves(tmp_path: Path, monkeypatch) -> None:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import QProcess, Qt
+    from PySide6.QtWidgets import QApplication
+
+    from simlab.gui import cockpit as cockpit_module
+    from simlab.gui.cockpit import CockpitWidget
+
+    app = QApplication.instance() or QApplication([])
+    monkeypatch.setattr(cockpit_module, "COCKPIT_DIR", tmp_path / "cockpit")
+    starts: list[tuple[str, list[str]]] = []
+    original_start = QProcess.start
+
+    def stub_start(process, program, arguments=None):
+        starts.append((program, list(arguments or [])))
+
+    QProcess.start = stub_start
+    widget = CockpitWidget(None)
+    try:
+        for index in range(widget.arm_list.count()):
+            item = widget.arm_list.item(index)
+            item.setCheckState(
+                Qt.CheckState.Checked
+                if item.text() == "rda_gru_surprise"
+                else Qt.CheckState.Unchecked
+            )
+        widget.exp_name.setText("queue_follow_test")
+        widget.total_steps.setValue(4096)
+        widget.train_seeds.setText("100000")
+        widget.dev_seeds.setText("")
+        widget.test_seeds.setText("")
+        widget.scen_hard.setChecked(False)
+        widget._launch_grid()
+        expected = tmp_path / "cockpit" / "queue_follow_test" / "runs" / "00_rda_gru_surprise_100000"
+        assert starts and "serve" in starts[0][1]
+        assert widget.live_run.currentText() == str(expected)
+        assert widget.curves_run.currentText() == str(expected)
+        assert widget.follow_cb.isChecked()
+        assert widget._curves_timer.interval() == 5000
+    finally:
+        widget.follow_cb.setChecked(False)
+        widget.deleteLater()
+        app.processEvents()
+        QProcess.start = original_start

@@ -368,6 +368,8 @@ def _default_runner(queue_dir: str | Path, job: Job, exp: Experiment) -> int:
         str(job.train_seed),
         "--rollout",
         str(exp.rollout_length),
+        "--eval-every",
+        str(exp.eval_every),
         "--out",
         str(out_dir),
     ]

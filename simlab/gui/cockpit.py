@@ -17,7 +17,7 @@ from typing import Any
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import Qt, QThread, QTimer, Signal
+from PySide6.QtCore import QProcess, Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -134,6 +134,7 @@ class CockpitWidget(QWidget):
         self._gate_data: dict[str, Any] = {}
         self._prev_steps: int | None = None
         self._prev_t = 0.0
+        self._server: QProcess | None = None
         self._build_ui()
 
     # ------------------------------------------------------------ UI shell
@@ -172,6 +173,9 @@ class CockpitWidget(QWidget):
         self.workers = QSpinBox()
         self.workers.setRange(1, 16)
         self.workers.setValue(DEFAULT_WORKERS)
+        self.eval_every = QSpinBox()
+        self.eval_every.setRange(0, 1000)
+        self.eval_every.setValue(20)
         self.train_seeds = QLineEdit("100000, 100001")
         self.dev_seeds = QLineEdit("0, 1, 2, 3, 4")
         self.test_seeds = QLineEdit("")
@@ -181,6 +185,7 @@ class CockpitWidget(QWidget):
         form.addRow("Total steps", self.total_steps)
         form.addRow("Rollout length", self.rollout)
         form.addRow("Workers", self.workers)
+        form.addRow("Checkpoint/eval every (iterations)", self.eval_every)
         form.addRow("Train seeds", self.train_seeds)
         form.addRow("Dev seeds", self.dev_seeds)
         form.addRow("Test seeds", self.test_seeds)
@@ -321,6 +326,7 @@ class CockpitWidget(QWidget):
             total_steps=self.total_steps.value(),
             rollout_length=self.rollout.value(),
             workers=self.workers.value(),
+            eval_every=self.eval_every.value(),
             train_seeds=_parse_seeds(self.train_seeds.text()),
             dev_seeds=_parse_seeds(self.dev_seeds.text()),
             test_seeds=_parse_seeds(self.test_seeds.text()),
@@ -423,6 +429,18 @@ class CockpitWidget(QWidget):
     def _queue_dir(self) -> Path:
         return Path(self.queue_dir_label.text().removeprefix("Queue: "))
 
+    def _follow_run(self, run_dir: Path, label: str = "") -> None:
+        text = str(run_dir)
+        index = self.live_run.findText(text)
+        if index < 0:
+            self.live_run.addItem(text)
+            index = self.live_run.findText(text)
+        self.live_run.setCurrentIndex(index)
+        self.curves_run.setEditText(text)
+        self.follow_cb.setChecked(True)
+        suffix = f" ({label})" if label else ""
+        self.live_status.setText(f"Following {run_dir}{suffix}.")
+
     def _launch_grid(self) -> None:
         exp = self._build_experiment()
         errors, _ = exp.validate()
@@ -442,14 +460,35 @@ class CockpitWidget(QWidget):
         else:
             QueueManager.create(qdir, exp)
         self.queue_dir_label.setText(f"Queue: {qdir}")
-        # Spawn the detached server subprocess (one instance, lock file).
-        proc = sys.executable
-        args = [proc, "-m", "simlab.research.queue", "serve", str(qdir)]
-        import subprocess
-
-        self._server = subprocess.Popen(args)
-        self.queue_status.setText("Queue server started.")
+        self._start_queue_server(qdir)
         self._refresh_queue()
+        if exp.arms and exp.train_seeds:
+            run_dir = qdir / "runs" / f"00_{exp.arms[0].name}_{exp.train_seeds[0]}"
+            self._follow_run(run_dir)
+
+    def _start_queue_server(self, qdir: Path) -> None:
+        if (
+            self._server is not None
+            and self._server.state() != QProcess.ProcessState.NotRunning
+        ):
+            self.queue_status.setText("Queue server is already running.")
+            return
+        process = QProcess(self)
+        process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
+        process.started.connect(lambda: self.queue_status.setText("Queue server started."))
+        process.errorOccurred.connect(
+            lambda error: self.queue_status.setText(f"Queue server error: {error}")
+        )
+        process.finished.connect(
+            lambda code, _status: self.queue_status.setText(
+                f"Queue server exited with code {code}."
+            )
+        )
+        self._server = process
+        process.start(
+            sys.executable,
+            ["-m", "simlab.research.queue", "serve", str(qdir)],
+        )
 
     def _quick_demo(self) -> None:
         """Launch a 20k-step demo and wire Live/Curves/Results/Gates to it."""
@@ -466,6 +505,7 @@ class CockpitWidget(QWidget):
             total_steps=20_000,
             rollout_length=1024,
             workers=DEFAULT_WORKERS,
+            eval_every=2,
             train_seeds=[100_001],
             dev_seeds=[0, 1, 2, 3, 4],
             test_seeds=[],
@@ -475,11 +515,7 @@ class CockpitWidget(QWidget):
         qdir = COCKPIT_DIR / exp.name
         if not (qdir / "queue.json").exists():
             QueueManager.create(qdir, exp)
-        import subprocess
-
-        self._server = subprocess.Popen(
-            [sys.executable, "-m", "simlab.research.queue", "serve", str(qdir)]
-        )
+        self._start_queue_server(qdir)
         self.queue_dir_label.setText(f"Queue: {qdir}")
         self.queue_status.setText(
             "Quick demo started (20k steps, rda_gru_surprise, 4 workers)."
@@ -487,14 +523,7 @@ class CockpitWidget(QWidget):
         self._refresh_queue()
         # Deterministic run dir: runs/00_<arm>_100001
         run_dir = qdir / "runs" / f"00_{arm.name}_100001"
-        idx = self.live_run.findText(str(run_dir))
-        if idx < 0:
-            self.live_run.addItem(str(run_dir))
-            idx = self.live_run.findText(str(run_dir))
-        self.live_run.setCurrentIndex(idx)
-        self.curves_run.setEditText(str(run_dir))
-        self.follow_cb.setChecked(True)
-        self.live_status.setText(f"Following {run_dir} (demo).")
+        self._follow_run(run_dir, "demo")
 
     def _refresh_queue(self) -> None:
         try:
@@ -678,6 +707,10 @@ class CockpitWidget(QWidget):
         layout.addWidget(self.curves_plot, 1)
 
         self.curves_refresh.clicked.connect(self._plot_curves)
+        self._curves_timer = QTimer(self)
+        self._curves_timer.setInterval(5000)
+        self._curves_timer.timeout.connect(self._plot_curves)
+        self._curves_timer.start()
         return page
 
     def _plot_curves(self) -> None:

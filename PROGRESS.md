@@ -1453,3 +1453,15 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
   tick 8.0-11.4ms. Build, checkpoint load, and first forward all ran off-GUI.
 - Each 5s playback advanced 49-50 ticks; heartbeat maximum gap was 26-73ms,
   below the 250ms threshold. No responsiveness fix was needed.
+
+### Validation: cockpit Queue / Curves / Live
+- Queue experiments now expose `eval_every` and pass it to the trainer; the
+  GUI starts the queue server with QProcess, follows the first selected run,
+  and Curves refreshes every 5s. Previously generic Queue launch did not wire
+  either view, and Curves refreshed only on manual click.
+- Offscreen 40k run (rda_gru_surprise, 4 workers, rollout 1024, eval every 3)
+  completed: one job done, zero failed, 40960 env steps, ten CSV rows, and
+  `latest.pt` was loaded during the run. Curves progressed 0 to 10 points;
+  Live agents moved. Start/mid/end screenshots for all six tabs are in
+  `logs/gui_check` (18 nonempty PNGs).
+- `tests/test_cockpit.py`: 42 passed in 9.03s; Ruff passed.

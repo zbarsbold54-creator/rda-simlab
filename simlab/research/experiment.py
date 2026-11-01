@@ -97,6 +97,7 @@ class Experiment:
     test_seeds: list[int] = field(default_factory=list)
     eval_scenarios: list[str] = field(default_factory=lambda: ["balanced", "hard"])
     control_arm: str | None = None
+    eval_every: int = 20
 
     def validate(self) -> tuple[list[str], list[str]]:
         """Return (errors, warnings) for the whole experiment."""
@@ -140,6 +141,8 @@ class Experiment:
             errors.append("total_steps must be >= 1")
         if self.rollout_length < 1:
             errors.append("rollout_length must be >= 1")
+        if self.eval_every < 0:
+            errors.append("eval_every must be >= 0")
         for arm in self.arms:
             errors.extend(f"{arm.name}: {e}" for e in arm.validate())
         return errors, warnings
@@ -175,6 +178,7 @@ def dump_experiment_toml(exp: Experiment) -> str:
     lines.extend(_dump_value("total_steps", exp.total_steps, 0))
     lines.extend(_dump_value("rollout_length", exp.rollout_length, 0))
     lines.extend(_dump_value("workers", exp.workers, 0))
+    lines.extend(_dump_value("eval_every", exp.eval_every, 0))
     lines.extend(_dump_value("train_seeds", list(exp.train_seeds), 0))
     lines.extend(_dump_value("dev_seeds", list(exp.dev_seeds), 0))
     lines.extend(_dump_value("test_seeds", list(exp.test_seeds), 0))
@@ -227,6 +231,7 @@ def load_experiment_toml(path: str | Path) -> Experiment:
         test_seeds=[int(s) for s in exp_raw.get("test_seeds", [])],
         eval_scenarios=[str(s) for s in exp_raw.get("eval_scenarios", [])],
         control_arm=exp_raw.get("control_arm"),
+        eval_every=int(exp_raw.get("eval_every", 20)),
     )
 
 
