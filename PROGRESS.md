@@ -1475,3 +1475,19 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
   `logs_headless_test_pytest.txt` entries.
 - Final per-file suite: 197 passed, 0 failed, 0 skipped across 18 files;
   `ruff check simlab tests` passed.
+
+### Follow-up: Gates / Results / saturation
+- Gates now plots `d`, `E`, `lam`, `m`, and `s`, auto-loads a new readable
+  followed checkpoint, and keys refreshes by checkpoint file signature.
+  Results now polls quick-eval comments from the followed run every 5s and
+  shows Iteration / Env steps / Cap % rows with a no-data-yet state.
+- Fresh 40k Queue run: at 35s all five gate series had 512 points; Results had
+  0 rows at start, 1 at 65s, 2 at 110s, and 3 at 160s; end remained 512 each
+  and 3 Results rows. Run completed with one job done, zero failed.
+- Gate inputs are already out of `[0,1]` at init (84.3-99.8% of values across
+  the four modes); final checkpoints are 95.5-97.9% out of range. PPO predictor
+  gradients remain nonzero, but `d lam / d m` is zero on 62.1-97.6% of init
+  batch elements and 80.9-89.3% at final. `surprise_rand` uses a sampled gate,
+  so its effective derivative with respect to `m` is zero by design.
+- Final per-file pytest: 199 passed, 0 failed, 0 skipped across 18 files;
+  Ruff passed.

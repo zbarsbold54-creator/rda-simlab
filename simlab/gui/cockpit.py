@@ -50,7 +50,12 @@ from simlab.research.experiment import (
 )
 from simlab.research.follower import FollowState, checkpoint_readable, poll_latest
 from simlab.research.gates import correlate_events, gate_stats, rail_warning
-from simlab.research.logs import curve_series, run_summary
+from simlab.research.logs import (
+    curve_series,
+    parse_learning_csv,
+    parse_quick_eval,
+    run_summary,
+)
 from simlab.research.queue import (
     PAUSE_FLAG,
     STOP_FLAG,
@@ -132,6 +137,12 @@ class CockpitWidget(QWidget):
         self._follow_state = FollowState()
         self._last_checkpoint: Path | None = None
         self._gate_data: dict[str, Any] = {}
+        self._gate_checkpoint: Path | None = None
+        self._gate_trace_signature: tuple[int, int] | None = None
+        self._gate_loading_signature: tuple[int, int] | None = None
+        self._pending_gate_checkpoint: tuple[Path, tuple[int, int]] | None = None
+        self._gate_thread: GateTraceThread | None = None
+        self._followed_run_dir: Path | None = None
         self._prev_steps: int | None = None
         self._prev_t = 0.0
         self._server: QProcess | None = None
@@ -430,6 +441,7 @@ class CockpitWidget(QWidget):
         return Path(self.queue_dir_label.text().removeprefix("Queue: "))
 
     def _follow_run(self, run_dir: Path, label: str = "") -> None:
+        self._followed_run_dir = run_dir
         text = str(run_dir)
         index = self.live_run.findText(text)
         if index < 0:
@@ -440,6 +452,7 @@ class CockpitWidget(QWidget):
         self.follow_cb.setChecked(True)
         suffix = f" ({label})" if label else ""
         self.live_status.setText(f"Following {run_dir}{suffix}.")
+        self._refresh_checkpoint_eval_table()
 
     def _launch_grid(self) -> None:
         exp = self._build_experiment()
@@ -621,6 +634,7 @@ class CockpitWidget(QWidget):
             return
         self._last_checkpoint = ckpt
         self._update_live_header(run_dir)
+        self._start_gate_trace(ckpt)
         # Rebuild a learned_torch playback config for the world view. Prefer
         # the architecture stored next to the checkpoint itself so playback
         # matches the actual trained net; fall back to the queue's arm guess.
@@ -744,14 +758,49 @@ class CockpitWidget(QWidget):
         self.results_table = QTableWidget(0, 0)
         layout.addWidget(self.results_table, 1)
         self.results_status = QLabel(
-            "No data: launch a run in the Queue tab, then load eval files."
+            "No data yet: follow a Queue run or load eval files."
         )
         layout.addWidget(self.results_status)
 
         self._results_rows: dict[str, list] = {}
+        self.checkpoint_eval_table = QTableWidget(0, 3)
+        self.checkpoint_eval_table.setHorizontalHeaderLabels(
+            ["Iteration", "Env steps", "Cap %"]
+        )
+        layout.addWidget(QLabel("Followed-run checkpoint evaluations"))
+        layout.addWidget(self.checkpoint_eval_table)
         self.results_load.clicked.connect(self._load_results)
         self.results_csv.clicked.connect(self._export_results)
+        self._results_timer = QTimer(self)
+        self._results_timer.setInterval(5000)
+        self._results_timer.timeout.connect(self._refresh_checkpoint_eval_table)
+        self._results_timer.start()
         return page
+
+    def _refresh_checkpoint_eval_table(self) -> None:
+        run_dir = self._followed_run_dir
+        evals = parse_quick_eval(run_dir / "learning.csv") if run_dir else []
+        steps_by_iteration = {
+            row["iteration"]: row["env_steps"]
+            for row in parse_learning_csv(run_dir / "learning.csv")
+        } if run_dir else {}
+        self.checkpoint_eval_table.setRowCount(len(evals))
+        for row_index, (iteration, cap_pct) in enumerate(evals):
+            values = (
+                iteration,
+                steps_by_iteration.get(iteration, ""),
+                cap_pct,
+            )
+            for column, value in enumerate(values):
+                self.checkpoint_eval_table.setItem(
+                    row_index, column, QTableWidgetItem(str(value))
+                )
+        if evals:
+            self.results_status.setText(
+                f"{len(evals)} checkpoint evals from {run_dir}."
+            )
+        elif not self._results_rows:
+            self.results_status.setText("No data yet: waiting for checkpoint evals or eval files.")
 
     def _load_results(self) -> None:
         paths, _ = QFileDialog.getOpenFileNames(
@@ -854,7 +903,7 @@ class CockpitWidget(QWidget):
         layout.addWidget(self.gates_plot, 1)
 
         self.gates_status = QLabel(
-            "No gate data: load a checkpoint or follow a run to compute a trace."
+            "No gate data yet: follow a run or load a checkpoint."
         )
         layout.addWidget(self.gates_status)
 
@@ -870,31 +919,96 @@ class CockpitWidget(QWidget):
         self.gates_plot.clear()
         gate = self._gate_data
         if not gate:
-            self.gates_status.setText("No gate data.")
+            checkpoint = self._last_checkpoint
+            if checkpoint is not None:
+                self._start_gate_trace(checkpoint)
+            self.gates_status.setText("No gate data yet: waiting for a trace.")
             return
-        lam = np.asarray(gate.get("lam", []), dtype=float)
-        mag = np.asarray(gate.get("mag", []), dtype=float)
+
+        series: dict[str, np.ndarray] = {}
+        for key in ("d", "E", "lam", "m", "s"):
+            values = np.asarray(gate.get(key, []), dtype=float)
+            if values.size:
+                series[key] = (
+                    values.reshape(values.shape[0], -1).mean(axis=1)
+                    if values.ndim > 1
+                    else values
+                )
+        lam = series.get("lam", np.asarray([], dtype=float))
+        E = np.asarray(gate.get("E", []), dtype=float)
+        mag = (
+            np.linalg.norm(E.reshape(E.shape[0], -1), axis=1)
+            if E.size
+            else np.asarray(gate.get("mag", []), dtype=float)
+        )
         rail = float(gate.get("rail", 1.0))
-        n = lam.size
-        x = np.arange(n)
-        if n:
+        colors = {
+            "d": theme.ENERGY_LOW,
+            "E": theme.ENERGY_HIGH,
+            "lam": theme.ACCENT,
+            "m": theme.TEXT,
+            "s": theme.WARNING,
+        }
+        for key, values in series.items():
             self.gates_plot.plot(
-                x, lam, pen=pg.mkPen(theme.ACCENT, width=2), name="lambda_t"
+                np.arange(len(values)),
+                values,
+                pen=pg.mkPen(colors[key], width=2),
+                name=key,
             )
         if mag.size:
-            self.gates_plot.plot(
-                x, mag, pen=pg.mkPen(theme.ENERGY_HIGH, width=2), name="|E|"
-            )
             rail_line = pg.InfiniteLine(
                 pos=rail, angle=0, pen=pg.mkPen(theme.ENERGY_LOW, width=1)
             )
             self.gates_plot.addItem(rail_line)
         stats = self.analyze_gate_data(gate)
+        checkpoint = gate.get("checkpoint", "checkpoint")
+        step_count = int(gate.get("steps", lam.size))
         self.gates_status.setText(
+            f"{step_count} steps from {Path(checkpoint).name}; "
             f"fraction_at_max={stats['fraction_at_max']} "
             f"|E|-rail_warning_runs={len(stats['rail_runs'])} "
             f"corr_lam_events={stats.get('corr_lam_events', 'n/a')}"
         )
+
+    def _start_gate_trace(self, checkpoint: Path) -> None:
+        checkpoint = Path(checkpoint)
+        try:
+            stat = checkpoint.stat()
+        except OSError:
+            return
+        signature = (stat.st_mtime_ns, stat.st_size)
+        if signature in (self._gate_trace_signature, self._gate_loading_signature):
+            return
+        if self._gate_thread is not None and self._gate_thread.isRunning():
+            self._pending_gate_checkpoint = (checkpoint, signature)
+            return
+        self.gates_status.setText(f"Computing trace from {checkpoint.name}…")
+        self._gate_checkpoint = checkpoint
+        self._gate_loading_signature = signature
+        self._gate_thread = GateTraceThread(checkpoint, self)
+        self._gate_thread.done.connect(self._on_gate_trace_done)
+        self._gate_thread.failed.connect(
+            self._on_gate_trace_failed
+        )
+        self._gate_thread.start()
+
+    def _on_gate_trace_done(self, gate: dict[str, Any]) -> None:
+        self.set_gate_data(gate)
+        self._gate_trace_signature = self._gate_loading_signature
+        self._gate_loading_signature = None
+        pending = self._pending_gate_checkpoint
+        self._pending_gate_checkpoint = None
+        if pending is not None and pending[1] != self._gate_trace_signature:
+            self._start_gate_trace(pending[0])
+
+    def _on_gate_trace_failed(self, message: str) -> None:
+        self._gate_loading_signature = None
+        self.gates_status.setText(f"Trace failed: {message}")
+        pending = self._pending_gate_checkpoint
+        self._pending_gate_checkpoint = None
+        if pending is not None:
+            self._start_gate_trace(pending[0])
 
     def analyze_gate_data(self, gate: dict[str, Any]) -> dict[str, Any]:
         """Pure analysis reused by tests."""
@@ -918,10 +1032,4 @@ class CockpitWidget(QWidget):
         )
         if not path:
             return
-        self.gates_status.setText("Computing gate trace…")
-        self._gate_thread = GateTraceThread(Path(path), self)
-        self._gate_thread.done.connect(self.set_gate_data)
-        self._gate_thread.failed.connect(
-            lambda msg: self.gates_status.setText(f"Trace failed: {msg}")
-        )
-        self._gate_thread.start()
+        self._start_gate_trace(Path(path))

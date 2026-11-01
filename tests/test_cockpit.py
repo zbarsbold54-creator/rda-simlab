@@ -679,3 +679,97 @@ def test_queue_launch_wires_live_and_curves(tmp_path: Path, monkeypatch) -> None
         widget.deleteLater()
         app.processEvents()
         QProcess.start = original_start
+
+
+def test_gates_auto_load_new_checkpoint_with_data_lengths(tmp_path: Path) -> None:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from simlab.gui.cockpit import CockpitWidget
+    from simlab.training.torch_policy import make_policy
+
+    app = QApplication.instance() or QApplication([])
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    checkpoint = run_dir / "latest.pt"
+    policy = make_policy(
+        {
+            "backbone": "rda_gru_surprise",
+            "drive_core": "rda8",
+            "fusion": "film",
+            "obs_mode": "obs_drives",
+            "seed": 5,
+        }
+    )
+    policy.save_checkpoint(checkpoint)
+    widget = CockpitWidget(None)
+    try:
+        widget.live_run.setEditText(str(run_dir))
+        assert widget.gates_status.text().startswith("No gate data yet")
+        widget._poll_follow()
+        assert widget._gate_thread is not None
+        assert widget._gate_thread.wait(30000)
+        app.processEvents()
+        assert widget._last_checkpoint == checkpoint
+        assert widget._gate_data["checkpoint"] == str(checkpoint)
+        items = {item.name(): item.getData() for item in widget.gates_plot.listDataItems()}
+        assert set(items) == {"d", "E", "lam", "m", "s"}
+        assert {name: len(data[0]) for name, data in items.items()} == {
+            "d": 512,
+            "E": 512,
+            "lam": 512,
+            "m": 512,
+            "s": 512,
+        }
+        first_signature = widget._gate_trace_signature
+
+        policy.save_checkpoint(checkpoint, step=1)
+        widget._poll_follow()
+        assert widget._gate_thread.wait(30000)
+        app.processEvents()
+        assert widget._gate_trace_signature != first_signature
+        assert widget._gate_data["steps"] == 512
+    finally:
+        widget.deleteLater()
+        app.processEvents()
+
+
+def test_results_checkpoint_eval_rows_refresh_from_followed_run(tmp_path: Path) -> None:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from simlab.gui.cockpit import CockpitWidget
+
+    app = QApplication.instance() or QApplication([])
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    learning = run_dir / "learning.csv"
+    learning.write_text(
+        "iteration,env_steps,mean_episode_len,mean_return,entropy,approx_kl,value_loss\n"
+        "2,12288,3072,0.5,1.0,0.1,0.2\n"
+        "# quick_eval it=2 cap_pct=12.5\n",
+        encoding="utf-8",
+    )
+    widget = CockpitWidget(None)
+    try:
+        assert widget.results_status.text().startswith("No data yet")
+        assert widget._results_timer.interval() == 5000
+        widget._follow_run(run_dir)
+        assert widget.checkpoint_eval_table.rowCount() == 1
+        assert [
+            widget.checkpoint_eval_table.horizontalHeaderItem(i).text()
+            for i in range(widget.checkpoint_eval_table.columnCount())
+        ] == ["Iteration", "Env steps", "Cap %"]
+        assert widget.checkpoint_eval_table.item(0, 0).text() == "2"
+        assert widget.checkpoint_eval_table.item(0, 1).text() == "12288"
+        assert widget.checkpoint_eval_table.item(0, 2).text() == "12.5"
+
+        with learning.open("a", encoding="utf-8") as stream:
+            stream.write("3,16384,4096,0.6,0.9,0.08,0.18\n")
+            stream.write("# quick_eval it=3 cap_pct=25.0\n")
+        widget._refresh_checkpoint_eval_table()
+        assert widget.checkpoint_eval_table.rowCount() == 2
+    finally:
+        widget.follow_cb.setChecked(False)
+        widget.deleteLater()
+        app.processEvents()
