@@ -24,6 +24,7 @@ DEFAULT_BASELINE = 0.9          # lam floor
 DEFAULT_GATE_LAMBDA_MAX = 0.9984375  # lam ceiling, rising from baseline
 DEFAULT_RHO = 0.99              # trace decay for m_t
 DEFAULT_M_SCALE = 4.0           # normalizer for the trace before the clamp
+DEFAULT_SOFT_GATE_K = 1.0
 
 
 class Retention(nn.Module):
@@ -34,8 +35,10 @@ class Retention(nn.Module):
     fixed          scalar or per-drive constant decay (lam fixed).
     constant       E_t is a learned constant vector (control), independent of obs.
     surprise       G1 shared gate from an aux-head prediction error.
+    surprise_soft  G1 gate with running-standardized m and a sigmoid mapping.
     surprise_rand  control: lam sampled i.i.d. from the empirical marginal of G1.
     per_drive      G3 per-drive gates, each with its own trace and predictor.
+    per_drive_soft G3 gate with running-standardized m and a sigmoid mapping.
     per_drive_tied G3 but all gates tied to the shared G1 gate.
     """
 
@@ -52,6 +55,7 @@ class Retention(nn.Module):
         trainable_gates: bool = False,
         n_hist_bins: int = 64,
         seed: int = 0,
+        soft_gate_k: float = DEFAULT_SOFT_GATE_K,
     ) -> None:
         super().__init__()
         self.mode = mode
@@ -64,6 +68,7 @@ class Retention(nn.Module):
         self.surprise_loss_weight = float(surprise_loss_weight)
         self.trainable_gates = bool(trainable_gates)
         self.n_hist_bins = int(n_hist_bins)
+        self.soft_gate_k = float(soft_gate_k)
 
         base = nn.Module()
         # Shared submodules are created for all modes; only the relevant ones
@@ -89,6 +94,10 @@ class Retention(nn.Module):
         self.register_buffer("s_var", torch.ones(1))
         self.register_buffer("d_mean", torch.zeros(self.n_drives))
         self.register_buffer("d_var", torch.ones(self.n_drives))
+        if mode in ("surprise_soft", "per_drive_soft"):
+            m_width = 1 if mode == "surprise_soft" else self.n_drives
+            self.register_buffer("m_mean", torch.zeros(m_width))
+            self.register_buffer("m_var", torch.ones(m_width))
 
         # Empirical histogram of the G1 gate (surprise_rand control).
         self.register_buffer(
@@ -109,7 +118,7 @@ class Retention(nn.Module):
         h = self.hidden
         if mode in ("fixed", "constant"):
             return n + h + n
-        if mode in ("surprise", "surprise_rand"):
+        if mode in ("surprise", "surprise_rand", "surprise_soft"):
             return n + 1 + h + n
         if mode == "per_drive_tied":
             return n * 3 + h + 1
@@ -130,7 +139,7 @@ class Retention(nn.Module):
                 "prev_e": rs[:, n : n + h],
                 "prev_d": rs[:, n + h : n + h + n],
             }
-        if mode in ("surprise", "surprise_rand"):
+        if mode in ("surprise", "surprise_rand", "surprise_soft"):
             return {
                 "E": rs[:, :n],
                 "m": rs[:, n : n + 1],
@@ -160,6 +169,22 @@ class Retention(nn.Module):
         """Past-only lam: function of m_{t-1}. Monotone rising toward max."""
         u = torch.clamp(m_prev / self.m_scale, 0.0, 1.0)
         return self.baseline + (self.gate_lambda_max - self.baseline) * u
+
+    def _soft_lam_from_m(
+        self, m_prev: torch.Tensor, training: bool
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if training:
+            sample_mean = m_prev.detach().mean(dim=0)
+            sample_var = (
+                m_prev.detach().var(dim=0, unbiased=False)
+                + (sample_mean - self.m_mean).square()
+            )
+            self.m_mean = self._ema(self.m_mean, sample_mean)
+            self.m_var = self._ema(self.m_var, sample_var)
+        m_hat = (m_prev - self.m_mean) / torch.sqrt(self.m_var + EPS)
+        u = torch.sigmoid(self.soft_gate_k * m_hat)
+        lam = self.baseline + (self.gate_lambda_max - self.baseline) * u
+        return lam, u, m_hat
 
     def _sample_hist(self, batch: int, device: Any) -> torch.Tensor:
         """Sample lam i.i.d. from the empirical marginal of the G1 gate."""
@@ -241,6 +266,24 @@ class Retention(nn.Module):
             metrics.update({"lam": lam, "E": E_next})
             return E_next, rs_next, metrics
 
+        if mode == "surprise_soft":
+            m_prev = parts["m"]
+            s_raw = (self._base.pred_o(prev_e) - o_emb).norm(dim=1, keepdim=True)
+            s_raw_d = s_raw.detach()
+            if training:
+                self.s_mean = self._ema(self.s_mean, s_raw_d.mean())
+                self.s_var = self._ema(self.s_var, s_raw_d.var(unbiased=False))
+            s = (s_raw - self.s_mean) / torch.sqrt(self.s_var + EPS)
+            s = s.detach()
+            m = self.rho * m_prev + s
+            lam, u, m_hat = self._soft_lam_from_m(m_prev, training)
+            E_next = lam * E + (1.0 - lam) * d
+            rs_next = self._assemble({"E": E_next, "m": m, **next_prev})
+            metrics.update(
+                {"lam": lam, "m": m, "s": s, "E": E_next, "u": u, "m_hat": m_hat}
+            )
+            return E_next, rs_next, metrics
+
         # --- surprise-family modes (shared G1 gate)
         if mode in ("surprise", "surprise_rand"):
             m_prev = parts["m"]
@@ -286,6 +329,15 @@ class Retention(nn.Module):
         s = (d_err - self.d_mean) / torch.sqrt(self.d_var + EPS)
         s = s.detach()
         m = self.rho * m_prev + s
+
+        if mode == "per_drive_soft":
+            lam, u, m_hat = self._soft_lam_from_m(m_prev, training)
+            E_next = lam * E + (1.0 - lam) * d
+            rs_next = self._assemble({"E": E_next, "m": m, **next_prev})
+            metrics.update(
+                {"lam": lam, "m": m, "s": s, "E": E_next, "u": u, "m_hat": m_hat}
+            )
+            return E_next, rs_next, metrics
 
         if mode == "per_drive_tied":
             s_raw = (

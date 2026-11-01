@@ -119,6 +119,8 @@ E_t = lam_t * E_{t-1} + (1 - lam_t) * write_t
 | `surprise_rand` (control) | `lam_t` sampled i.i.d. from the empirical marginal histogram of the G1 gate (see 3.4). |
 | `per_drive` (G3) | per-drive traces `m_{t,i}` and `lam_{t,i}`, each driven by its own prediction error of `d_t` from `d_{t-1}`. |
 | `per_drive_tied` | G3 but all gates tied to the shared G1 gate. |
+| `surprise_soft` | G1 ablation with running-standardized `m` and a sigmoid gate (see 3.6). |
+| `per_drive_soft` | G3 ablation with running-standardized per-drive `m` and a sigmoid gate (see 3.6). |
 
 All variants share the same observation encoder and policy/value heads (see
 §4). Gate parameters start **fixed** (no trainable gate weights). Trainable gate
@@ -158,6 +160,27 @@ noise uses).
   `i` has its own error, trace `m_{t,i}`, and `lam_{t,i}`.
 - `per_drive_tied` ties every gate to the shared G1 gate (identical to G1's
   `lam_t` broadcast to all drives).
+
+### 3.6 Soft-gate ablation (new modes only)
+
+`surprise_soft` and `per_drive_soft` are ablations, not replacements for the
+hard-clamp `surprise` / `per_drive` modes. They keep the same prediction errors,
+traces, and auxiliary losses, but map prior trace through running-statistic
+normalization and a sigmoid:
+
+```
+m_hat = (m_(t-1) - mean_m) / sqrt(var_m + EPS)
+u_t = sigmoid(1.0 * m_hat)
+lam_t = 0.9 + (0.9984375 - 0.9) * u_t
+```
+
+`mean_m` and `var_m` are buffers initialized to zero and one, respectively;
+they are updated with the same 0.99/0.01 EMA convention as the existing `s`
+statistics, including temporal mean shift in the variance estimate. They are
+saved in checkpoints and frozen when a soft-mode checkpoint is loaded for
+evaluation. The fixed sigmoid slope is `k=1.0`; it adds no parameters.
+Presets: `rda_gru_surprise_soft`, `rda_gru_per_drive_soft`,
+`rda_tf_surprise_soft`, and `rda_tf_per_drive_soft`.
 
 ---
 

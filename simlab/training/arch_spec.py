@@ -455,6 +455,8 @@ _RETENTION_DESC = {
     "surprise_rand": "surprise_rand control gate",
     "per_drive": "per-drive surprise gate (G3)",
     "per_drive_tied": "per-drive gate tied to G1",
+    "surprise_soft": "soft sigmoid G1 gate ablation",
+    "per_drive_soft": "soft sigmoid per-drive gate ablation",
 }
 for _kind, _bb_desc in (("gru", "GRU encoder"), ("tf", "Transformer encoder")):
     for _mode, _desc in _RETENTION_DESC.items():

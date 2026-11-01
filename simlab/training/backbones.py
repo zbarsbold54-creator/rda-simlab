@@ -356,6 +356,7 @@ class RDABackbone(Backbone):
         surprise_loss_weight: float = 1.0,
         trainable_gates: bool = False,
         seed: int = 0,
+        soft_gate_k: float = 1.0,
     ) -> None:
         from simlab.training.retention import Retention
 
@@ -376,6 +377,7 @@ class RDABackbone(Backbone):
             surprise_loss_weight=surprise_loss_weight,
             trainable_gates=trainable_gates,
             seed=seed,
+            soft_gate_k=soft_gate_k,
         )
         self.state_dim = self.hidden + self._retention.state_dim
         self._last_metrics: dict[str, Any] = {}
@@ -456,7 +458,7 @@ class RDABackbone(Backbone):
         return _param_count(self._net) + _param_count(self._retention)
 
     def config_dict(self) -> dict[str, Any]:
-        return {
+        config = {
             "backbone": self.backbone_name,
             "retention_mode": self.retention_mode,
             "hidden": self.hidden,
@@ -469,6 +471,9 @@ class RDABackbone(Backbone):
             "surprise_loss_weight": self._retention.surprise_loss_weight,
             "trainable_gates": self._retention.trainable_gates,
         }
+        if self.retention_mode in ("surprise_soft", "per_drive_soft"):
+            config["soft_gate_k"] = self._retention.soft_gate_k
+        return config
 
 
 class RDATransformerBackbone(Backbone):
@@ -497,6 +502,7 @@ class RDATransformerBackbone(Backbone):
         surprise_loss_weight: float = 1.0,
         trainable_gates: bool = False,
         seed: int = 0,
+        soft_gate_k: float = 1.0,
     ) -> None:
         from simlab.training.retention import Retention
 
@@ -520,6 +526,7 @@ class RDATransformerBackbone(Backbone):
             surprise_loss_weight=surprise_loss_weight,
             trainable_gates=trainable_gates,
             seed=seed,
+            soft_gate_k=soft_gate_k,
         )
         self._tokens = self.context * self.d_model
         self.state_dim = self._tokens + self._retention.state_dim
@@ -605,7 +612,7 @@ class RDATransformerBackbone(Backbone):
         return _param_count(self._net) + _param_count(self._retention)
 
     def config_dict(self) -> dict[str, Any]:
-        return {
+        config = {
             "backbone": self.backbone_name,
             "retention_mode": self.retention_mode,
             "context": self.context,
@@ -621,6 +628,9 @@ class RDATransformerBackbone(Backbone):
             "surprise_loss_weight": self._retention.surprise_loss_weight,
             "trainable_gates": self._retention.trainable_gates,
         }
+        if self.retention_mode in ("surprise_soft", "per_drive_soft"):
+            config["soft_gate_k"] = self._retention.soft_gate_k
+        return config
 
 
 RETENTION_MODES = (
@@ -630,6 +640,8 @@ RETENTION_MODES = (
     "surprise_rand",
     "per_drive",
     "per_drive_tied",
+    "surprise_soft",
+    "per_drive_soft",
 )
 
 
