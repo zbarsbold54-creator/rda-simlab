@@ -1436,3 +1436,13 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
   steps; `lam` stayed within `[0, 0.9984375]`, and `m`/`s` were finite.
 - Added coverage for surprise, fixed, and constant retention. The focused test
   passed (3 tests); `tests/test_rda.py` passed (37 tests, 235.32s).
+
+### Follow-up: GUI architecture presets
+- `build_policy_cfg` now size-matches schema-default dimensions to 73606 for
+  every registered preset except fixed-size `gru_legacy` (9798). Custom
+  non-default dimensions remain explicit. Selecting an RDA preset defaults to
+  `rda8`, FiLM, and `obs_drives`.
+- All 20 non-legacy presets measured within 5%; all RDA modes include `pred_o`
+  and `pred_d`. The measured canonical table is in `logs/gui_check`.
+- Ruff passed; `tests/test_architecture.py` passed (33 tests), and
+  `tests/test_gui_architecture.py` passed (9 tests).

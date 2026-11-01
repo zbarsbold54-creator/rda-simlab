@@ -295,6 +295,34 @@ def test_match_params_within_5_percent():
     count = matched.param_count()
     assert abs(count - target) / target <= 0.05
 
+    from simlab.training.arch_spec import (
+        DEFAULT_MATCH_PARAMS,
+        build_policy_cfg,
+        list_specs,
+    )
+
+    for bb in list_specs("backbone"):
+        if bb == "gru_legacy":
+            legacy = make_policy(build_policy_cfg({"backbone": bb, "fusion": "none"}))
+            assert legacy.param_count() == 9798
+            continue
+        is_rda = bb.startswith("rda")
+        selection = {
+            "backbone": bb,
+            "drive_core": "rda8" if is_rda else "none",
+            "fusion": "film" if is_rda else "concat",
+            "obs_mode": "obs_drives" if is_rda else "obs_only",
+            "seed": 0,
+            "backbone_config": {},
+            "drive_config": {},
+        }
+        preset = make_policy(build_policy_cfg(selection))
+        assert abs(preset.param_count() - DEFAULT_MATCH_PARAMS) / DEFAULT_MATCH_PARAMS <= 0.05, bb
+        if is_rda:
+            retention = preset._backbone._retention
+            assert hasattr(retention._base, "pred_o"), bb
+            assert hasattr(retention._base, "pred_d"), bb
+
 def test_eval_rejects_unknown_policy():
     """Eval must reject unknown policy/backbone names loudly (no silent fallback)."""
     from simlab.cli import _validate_policy_name

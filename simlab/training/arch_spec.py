@@ -40,6 +40,7 @@ class ArchSpec:
 
 
 ARCH_SPECS: dict[tuple[str, str], ArchSpec] = {}
+DEFAULT_MATCH_PARAMS = 73606
 
 
 def add_spec(
@@ -459,14 +460,25 @@ def build_policy_cfg(selection: dict[str, Any]) -> dict[str, Any]:
     obs_mode = selection.get("obs_mode", "obs_only")
     if backbone.startswith("rda"):
         obs_mode = "obs_drives"
-    return {
+    kwargs = dict(selection.get("backbone_config", {}))
+    cfg = {
         "backbone": backbone,
         "fusion": selection.get("fusion", "concat"),
         "obs_mode": obs_mode,
         "seed": int(selection.get("seed", 0)),
-        "kwargs": dict(selection.get("backbone_config", {})),
+        "kwargs": kwargs,
         "drive_core": selection.get("drive_core", "none"),
     }
+    if backbone != "gru_legacy":
+        target = selection.get("match_params", DEFAULT_MATCH_PARAMS)
+        spec = get_spec("backbone", backbone)
+        defaults = spec_defaults(spec) if spec is not None else {}
+        size_key = "hidden" if "hidden" in defaults else "d_model"
+        if kwargs.get(size_key) == defaults.get(size_key):
+            kwargs.pop(size_key, None)
+        if target is not None:
+            cfg["match_params"] = int(target)
+    return cfg
 
 
 def load_arch_toml(path: str | Path) -> dict[str, Any]:

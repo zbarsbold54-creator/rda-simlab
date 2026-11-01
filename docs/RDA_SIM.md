@@ -406,3 +406,13 @@ overlaid when a control is selected, and a warning fires if `|E|` stays within
   Each count includes the shared obs encoder, the backbone, the drive/retention
   module, the auxiliary heads (`pred_o`, `pred_d`), and constants; `gru_legacy`
   (no FiLM, hidden 64) is the lone non-matched exception.
+
+### GUI preset defaults
+
+Architecture builds size-match schema-default dimensions to the transformer
+obs-only target (73606), except `gru_legacy`, which remains fixed at 9798.
+Selecting an RDA preset defaults to `rda8`, FiLM, and `obs_drives`. With those
+GUI defaults, `gru` is 70118 (hidden 224), transformer is 73606 (d_model 64),
+RDA-GRU presets are 70398 (hidden 136), and RDA-TF presets are 69986
+(d_model 60). Both auxiliary predictors (`pred_o`, `pred_d`) are present in
+every RDA retention mode, including fixed and constant controls.

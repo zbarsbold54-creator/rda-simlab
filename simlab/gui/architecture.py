@@ -288,6 +288,20 @@ class ArchitectureWidget(QWidget):
 
     # ----------------------------------------------------------------- forms
     def _rebuild_forms(self) -> None:
+        if self.sender() is self.backbone:
+            name = self.backbone.currentText()
+            if name.startswith("rda"):
+                defaults = ((self.drive, "rda8"), (self.fusion, "film"), (self.obs_mode, "obs_drives"))
+            elif name == "gru_legacy":
+                defaults = ((self.drive, "none"), (self.fusion, "none"), (self.obs_mode, "obs_only"))
+            elif name in ("gru", "transformer"):
+                defaults = ((self.drive, "none"), (self.fusion, "concat"), (self.obs_mode, "obs_only"))
+            else:
+                defaults = ()
+            for combo, value in defaults:
+                combo.blockSignals(True)
+                combo.setCurrentText(value)
+                combo.blockSignals(False)
         self._clear_form(self._config_form)
         self._backbone_widgets = self._build_field_row(
             self._config_form, "backbone", self.backbone.currentText()
