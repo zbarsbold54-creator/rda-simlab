@@ -1446,3 +1446,10 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
   and `pred_d`. The measured canonical table is in `logs/gui_check`.
 - Ruff passed; `tests/test_architecture.py` passed (33 tests), and
   `tests/test_gui_architecture.py` passed (9 tests).
+
+### Validation: offscreen architecture responsiveness
+- Real `MainWindow` swaps completed for legacy GRU, transformer, RDA-GRU, and
+  RDA-TF. Selection was 0.3-7.4ms, build completion 15.8-36.6ms, and first
+  tick 8.0-11.4ms. Build, checkpoint load, and first forward all ran off-GUI.
+- Each 5s playback advanced 49-50 ticks; heartbeat maximum gap was 26-73ms,
+  below the 250ms threshold. No responsiveness fix was needed.
