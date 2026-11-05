@@ -1,7 +1,7 @@
-"""Decay probe driver (decay-v0).
+"""Decay probe driver (decay-v1).
 
 Measures whether the RDA retention gate decays/retains memory sensibly.
-Probes A/B/C as specified in the task. CPU only, workers=4, OMP/MKL=1.
+Probes A/B/C/D as specified. CPU only, workers=4, OMP/MKL=1.
 """
 
 from __future__ import annotations
@@ -23,16 +23,14 @@ sys.path.insert(0, str(REPO))
 LOG_ROOT = REPO / "logs" / "decay_probe"
 TRAIN_ROOT = LOG_ROOT / "train"
 
-VARIANTS = [
-    "rda_gru_constant",
-    "rda_gru_surprise",
-    "rda_gru_per_drive",
-    "rda_tf_surprise",
-    "rda_tf_per_drive",
-    "gru",
-    "transformer",
-]
-RDA_VARIANTS = VARIANTS[:5]
+HARD = ["rda_gru_surprise", "rda_gru_per_drive", "rda_tf_surprise", "rda_tf_per_drive"]
+SOFT = ["rda_gru_surprise_soft", "rda_gru_per_drive_soft", "rda_tf_surprise_soft", "rda_tf_per_drive_soft"]
+CONSTANTS = ["rda_gru_constant", "rda_tf_constant"]
+CONTROLS = ["gru", "transformer"]
+VARIANTS = HARD + SOFT + CONTROLS
+RDA_VARIANTS = HARD + SOFT
+GATED = HARD + SOFT
+_POLICY_CACHE: dict[str, Any] = {}
 EVAL_SEEDS = list(range(20))
 TICKS = 512
 BALANCED = "configs/balanced.toml"
@@ -121,6 +119,7 @@ def _find_existing(variant: str) -> Path | None:
 
 
 def _train(variant: str) -> Path:
+    import time as _time
     out = TRAIN_ROOT / variant
     out.mkdir(parents=True, exist_ok=True)
     final = out / "final.pt"
@@ -135,18 +134,103 @@ def _train(variant: str) -> Path:
         "--out", str(out),
     ]
     log.info("training %s -> %s", variant, out)
-    r = subprocess.run(cmd, check=False, cwd=str(REPO), env=_env())
-    if r.returncode != 0:
+    start = _time.time()
+    proc = subprocess.Popen(cmd, cwd=str(REPO), env=_env())
+    last_print = 0
+    csv = out / "learning.csv"
+    while proc.poll() is None:
+        _time.sleep(2)
+        if csv.exists():
+            try:
+                lines = csv.read_text(encoding="utf-8", errors="replace").splitlines()
+                steps_done = 0
+                for ln in lines:
+                    if ln and not ln.startswith("#") and not ln.startswith("iteration"):
+                        try:
+                            steps_done = int(ln.split(",")[1])
+                        except Exception:
+                            log.debug("parse learning.csv failed", exc_info=True)
+                if steps_done - last_print >= 5000:
+                    print(f"[{variant}] {steps_done}/{TRAIN_STEPS} steps elapsed={_time.time()-start:.1f}s", flush=True)
+                    last_print = steps_done
+            except Exception:
+                log.debug("read learning.csv failed", exc_info=True)
+    if proc.returncode != 0:
         raise RuntimeError(f"training failed for {variant}")
+    print(f"[{variant}] done elapsed={_time.time()-start:.1f}s", flush=True)
     return final
 
 
+def _train_at_steps(variant: str, steps: int) -> Path:
+    out = TRAIN_ROOT / f"{variant}_s{steps}"
+    out.mkdir(parents=True, exist_ok=True)
+    final = out / "final.pt"
+    if final.exists():
+        return final
+    if steps == 0:
+        from simlab.training.arch_spec import build_policy_cfg, default_preset_selection
+        from simlab.training.torch_policy import make_policy
+        sel = default_preset_selection(variant, seed=TRAIN_SEED)
+        cfg = build_policy_cfg(sel)
+        pol = make_policy(cfg)
+        pol.save_checkpoint(final)
+        return final
+    cmd = [
+        sys.executable, "-m", "simlab.cli", "train",
+        "--arch", variant,
+        "--total-steps", str(steps),
+        "--workers", str(WORKERS),
+        "--seed", str(TRAIN_SEED),
+        "--out", str(out),
+    ]
+    log.info("training %s steps=%d -> %s", variant, steps, out)
+    r = subprocess.run(cmd, check=False, cwd=str(REPO), env=_env())
+    if r.returncode != 0:
+        raise RuntimeError(f"training failed for {variant} steps={steps}")
+    return final
+
+
+def _can_reuse_soft(checkpoint: Path, variant: str) -> bool:
+    try:
+        from simlab.training.arch_spec import build_policy_cfg, default_preset_selection
+        from simlab.training.torch_policy import make_policy
+        sel = default_preset_selection(variant, seed=TRAIN_SEED)
+        cfg = build_policy_cfg(sel)
+        fresh = make_policy(cfg)
+        loaded = make_policy({**cfg, "checkpoint": str(checkpoint)})
+        if getattr(loaded, "_load_error", None):
+            return False
+        # sample parameter differs from fresh?
+        import torch as _t
+        sd_f = fresh._backbone._net.state_dict()
+        sd_l = loaded._backbone._net.state_dict()
+        for k in sd_f:
+            if not _t.allclose(sd_f[k].cpu(), sd_l[k].cpu(), atol=1e-6):
+                return True
+        return False
+    except Exception:
+        log.debug("reuse check failed", exc_info=True)
+        return False
+
+
 def _get_checkpoint(variant: str) -> Path:
-    existing = _find_existing(variant)
-    if existing is not None:
-        log.info("reuse existing 10-iter checkpoint for %s: %s", variant, existing)
-        return existing
-    log.info("no 10-iter checkpoint for %s, training 40k steps", variant)
+    fresh = TRAIN_ROOT / variant / "final.pt"
+    if fresh.exists():
+        if variant in SOFT:
+            if _can_reuse_soft(fresh, variant):
+                log.info("reuse soft checkpoint (loads and differs) for %s: %s", variant, fresh)
+                return fresh
+            log.info("soft checkpoint invalid for %s, retraining", variant)
+            fresh.unlink(missing_ok=True)
+        else:
+            log.info("reuse fresh checkpoint for %s: %s", variant, fresh)
+            return fresh
+    if variant not in SOFT:
+        existing = _find_existing(variant)
+        if existing is not None and variant != "rda_gru_surprise":
+            log.info("reuse existing 10-iter checkpoint for %s: %s", variant, existing)
+            return existing
+    log.info("training 40k steps for %s", variant)
     return _train(variant)
 
 
@@ -169,18 +253,41 @@ def _make_runner(checkpoint: Path, seed: int, variant: str):
     runner = Runner(cfg, seed=seed, agents=5)
     runner.setup()
     runner._ensure_components()
+    pol = getattr(runner, "_policy", None)
+    if pol is not None and getattr(pol, "_load_error", None):
+        raise RuntimeError(f"checkpoint load failed for {variant}: {pol._load_error}")
+    # cache policy weights per variant (load once, reuse across seeds)
+    key = str(checkpoint)
+    if key not in _POLICY_CACHE:
+        _POLICY_CACHE[key] = pol
+    else:
+        # reuse cached weights to avoid reload; keep runner's policy object but copy weights
+        cached = _POLICY_CACHE[key]
+        if cached is not pol:
+            try:
+                pol._backbone._net.load_state_dict(cached._backbone._net.state_dict())
+                _ret = getattr(pol._backbone, "_retention", None)
+                _cret = getattr(cached._backbone, "_retention", None)
+                if _ret is not None and _cret is not None:
+                    _ret.load_state_dict(_cret.state_dict())
+            except Exception:
+                log.debug("cache copy failed", exc_info=True)
     return runner
 
 
-def _collect_ab(checkpoint: Path, variant: str) -> tuple[list[float], list[float], list[float], list[float]]:
-    """Collect lam, m_norm, s per tick (mean over agents/drives)."""
+def _collect_ab(checkpoint: Path, variant: str) -> tuple[list[float], list[float], list[float], list[float], list[float], list[float], list[float], list[list[list[float]]]]:
+    """Collect lam, m_norm, s, raw m, m_hat, u, per-episode per-channel lam."""
     lams: list[float] = []
     ms: list[float] = []
     ss: list[float] = []
-    # per-tick means for Probe B
+    raw_ms: list[float] = []
+    mhats: list[float] = []
+    us: list[float] = []
     tick_lam: list[float] = []
     tick_s: list[float] = []
+    per_episode: list[list[list[float]]] = []
     for seed in EVAL_SEEDS:
+        ep_channels: dict[int, list[float]] = {}
         runner = _make_runner(checkpoint, seed, variant)
         policy = runner._policy
         world = runner._world
@@ -215,11 +322,18 @@ def _collect_ab(checkpoint: Path, variant: str) -> tuple[list[float], list[float
                         lam_arr = np.asarray(m["lam"], dtype=np.float64).reshape(-1)
                         lams.extend(lam_arr.tolist())
                         tick_lams.extend(lam_arr.tolist())
+                        for ci, v in enumerate(lam_arr.tolist()):
+                            ep_channels.setdefault(ci, []).append(float(v))
                     if "m" in m:
                         m_arr = np.asarray(m["m"], dtype=np.float64).reshape(-1)
                         mn = m_arr / M_SCALE
                         ms.extend(mn.tolist())
+                        raw_ms.extend(m_arr.tolist())
                         tick_ms.extend(mn.tolist())
+                    if "m_hat" in m:
+                        mhats.extend(np.asarray(m["m_hat"], dtype=np.float64).reshape(-1).tolist())
+                    if "u" in m:
+                        us.extend(np.asarray(m["u"], dtype=np.float64).reshape(-1).tolist())
                     if "s" in m:
                         s_arr = np.asarray(m["s"], dtype=np.float64).reshape(-1)
                         ss.extend(s_arr.tolist())
@@ -233,7 +347,8 @@ def _collect_ab(checkpoint: Path, variant: str) -> tuple[list[float], list[float
             runner._step_count = runner._world.get_step_count()
             if runner._world._agents and all(not st["is_alive"] for st in runner._world._agents.values()):
                 break
-    return lams, ms, ss, tick_lam
+        per_episode.append([ep_channels.get(k, []) for k in sorted(ep_channels)])
+    return lams, ms, ss, tick_lam, raw_ms, mhats, us, per_episode
 
 
 def _spearman(x: list[float], y: list[float]) -> float:
@@ -297,6 +412,63 @@ def _probe_b(variant: str, checkpoint: Path, tick_lam: list[float], tick_s: list
     else:
         sp = 0.0
     return ProbeB(variant, str(checkpoint), mean_after, mean_base, diff, sp)
+
+
+def _probe_d1(per_episode: list[list[list[float]]]) -> dict[str, Any]:
+    # per_episode: list of episodes, each list of channels, each list of lam values
+    if not per_episode:
+        return {"within_std_mean": 0.0, "between_std_mean": 0.0, "per_channel": []}
+    n_ch = max(len(ep) for ep in per_episode) if per_episode else 0
+    within_means: list[float] = []
+    between_means: list[float] = []
+    per_ch: list[dict[str, float]] = []
+    for ch in range(n_ch):
+        ep_means: list[float] = []
+        ep_stds: list[float] = []
+        for ep in per_episode:
+            if ch < len(ep) and ep[ch]:
+                arr = np.asarray(ep[ch], dtype=np.float64)
+                ep_means.append(float(arr.mean()))
+                ep_stds.append(float(arr.std()))
+        if ep_means:
+            w = float(np.mean(ep_stds)) if ep_stds else 0.0
+            b = float(np.std(ep_means)) if len(ep_means) > 1 else 0.0
+            within_means.append(w)
+            between_means.append(b)
+            per_ch.append({"channel": ch, "within_std": w, "between_std": b, "mean": float(np.mean(ep_means))})
+    return {
+        "within_std_mean": float(np.mean(within_means)) if within_means else 0.0,
+        "between_std_mean": float(np.mean(between_means)) if between_means else 0.0,
+        "per_channel": per_ch,
+    }
+
+
+def _probe_d2(raw_ms: list[float], ms: list[float], ss: list[float], mhats: list[float], us: list[float], variant: str) -> dict[str, Any]:
+    def pcts(vals: list[float]) -> dict[str, float]:
+        if not vals:
+            return {"min": 0.0, "p5": 0.0, "p50": 0.0, "p95": 0.0, "max": 0.0}
+        a = np.asarray(vals, dtype=np.float64)
+        return {"min": float(a.min()), "p5": float(np.percentile(a, 5)), "p50": float(np.percentile(a, 50)), "p95": float(np.percentile(a, 95)), "max": float(a.max())}
+    # gate pre-activation: hard = m/m_scale (before clamp), soft = soft_gate_k*m_hat (before sigmoid)
+    if variant.endswith("_soft"):
+        pre = [float(v) * 1.0 for v in mhats]  # soft_gate_k default 1.0
+        clamp_pct = 0.0  # no clamp in soft path
+    else:
+        pre = ms  # m/m_scale is pre-activation for hard
+        if ms:
+            arr = np.asarray(ms, dtype=np.float64)
+            clamp_pct = float(((arr < 0.0) | (arr > 1.0)).mean() * 100.0)
+        else:
+            clamp_pct = 0.0
+    return {
+        "raw_m": pcts(raw_ms),
+        "norm_m": pcts(ms),
+        "s": pcts(ss),
+        "pre_act": pcts(pre),
+        "m_hat": pcts(mhats),
+        "u": pcts(us),
+        "clamp_pct": clamp_pct,
+    }
 
 
 def _run_episode_states(checkpoint: Path, variant: str, seed: int, noisy: bool) -> list[np.ndarray]:
@@ -394,40 +566,150 @@ def _probe_c(variant: str, checkpoint: Path) -> ProbeC:
     return ProbeC(variant, str(checkpoint), peak_mean, half_mean, half_str, bb_exposes)
 
 
+def _run_single(variant: str) -> dict[str, Any]:
+    import time as _time
+    t0 = _time.time()
+    ckpt = _get_checkpoint(variant)
+    out: dict[str, Any] = {"variant": variant, "checkpoint": str(ckpt), "probes": {}}
+    if variant in RDA_VARIANTS:
+        lams, ms, ss, tick_lam, raw_ms, mhats, us, per_ep = _collect_ab(ckpt, variant)
+        print(f"[{variant}] A/B/D collected elapsed={_time.time()-t0:.1f}s", flush=True)
+        pa = _probe_a(variant, ckpt, lams, ms)
+        if ss and lams:
+            s_tick = ss[:len(tick_lam)] if len(ss) >= len(tick_lam) else ss + [0.0]*(len(tick_lam)-len(ss))
+            pb = _probe_b(variant, ckpt, tick_lam, s_tick)
+        else:
+            pb = ProbeB(variant, str(ckpt), 0.0, 0.0, 0.0, 0.0)
+        d1 = _probe_d1(per_ep)
+        d2 = _probe_d2(raw_ms, ms, ss, mhats, us, variant)
+        out["probes"]["A"] = {"lam_p5": pa.lam_p5, "lam_p50": pa.lam_p50, "lam_p95": pa.lam_p95, "lam_std": pa.lam_std, "pct_low": pa.pct_low, "pct_high": pa.pct_high, "pct_m_in": pa.pct_m_in, "n_steps": pa.n_steps, "checkpoint": pa.checkpoint}
+        out["probes"]["B"] = {"mean_lam_after": pb.mean_lam_after, "mean_lam_base": pb.mean_lam_base, "diff": pb.diff, "spearman": pb.spearman, "checkpoint": pb.checkpoint}
+        out["probes"]["D1"] = d1
+        out["probes"]["D2"] = d2
+        print(f"[{variant}] A/B/D1/D2 done elapsed={_time.time()-t0:.1f}s", flush=True)
+    pc = _probe_c(variant, ckpt)
+    out["probes"]["C"] = {"peak_mean": pc.peak_mean, "half_mean": pc.half_mean, "half_str": pc.half_str, "introspect_exposes": pc.introspect_exposes, "checkpoint": pc.checkpoint}
+    print(f"[{variant}] C done elapsed={_time.time()-t0:.1f}s", flush=True)
+    out["wall_time_s"] = _time.time() - t0
+    return out
+
+
 def main() -> int:
+    import time as _time
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-train", action="store_true")
-    ap.parse_args()
+    ap.add_argument("--variant", default=None)
+    args = ap.parse_args()
     LOG_ROOT.mkdir(parents=True, exist_ok=True)
     TRAIN_ROOT.mkdir(parents=True, exist_ok=True)
-    results: dict[str, Any] = {
-        "commit": _git_commit(),
-        "variants": {},
-        "probes": {},
-    }
+    if args.variant:
+        res = _run_single(args.variant)
+        per = LOG_ROOT / "per_variant"
+        per.mkdir(parents=True, exist_ok=True)
+        (per / f"{args.variant}.json").write_text(json.dumps(res, indent=2, sort_keys=True), encoding="utf-8")
+        print(f"[{args.variant}] wrote per-variant json wall={res['wall_time_s']:.1f}s", flush=True)
+        return 0
+    # parent: run each variant in subprocess with 30 min timeout
+    per = LOG_ROOT / "per_variant"
+    per.mkdir(parents=True, exist_ok=True)
+    for variant in VARIANTS:
+        cmd = [sys.executable, str(Path(__file__).resolve()), "--variant", variant]
+        print(f"[parent] starting {variant} subprocess", flush=True)
+        t0 = _time.time()
+        r = subprocess.run(cmd, check=False, cwd=str(REPO), env=_env(), timeout=1800)
+        print(f"[parent] {variant} done rc={r.returncode} elapsed={_time.time()-t0:.1f}s", flush=True)
+        if r.returncode != 0:
+            raise RuntimeError(f"variant subprocess failed for {variant}")
+    results: dict[str, Any] = {"commit": _git_commit(), "variants": {}, "probes": {}}
+    for variant in VARIANTS:
+        data = json.loads((per / f"{variant}.json").read_text(encoding="utf-8"))
+        results["variants"][variant] = {"checkpoint": data["checkpoint"], "wall_time_s": data["wall_time_s"]}
+        for k, v in data["probes"].items():
+            results["probes"].setdefault(k, {})[variant] = v
+    for v in CONSTANTS:
+        results["variants"][v] = {"checkpoint": "no gate (n/a)"}
+        for k in ("A", "B", "D1", "D2", "C"):
+            results["probes"].setdefault(k, {})[v] = {"note": "no gate (n/a)"}
+    # D3 in parent (uses _collect_ab directly)
+    results["probes"]["D3"] = {}
+    for steps in (0, 10000, 20000, 40000):
+        ck = _train_at_steps("rda_gru_surprise", steps)
+        lams, ms, _, _, _, _, _, _ = _collect_ab(ck, "rda_gru_surprise")
+        pa = _probe_a("rda_gru_surprise", ck, lams, ms)
+        results["probes"]["D3"][str(steps)] = {"pct_low": pa.pct_low, "pct_high": pa.pct_high, "total": pa.pct_low + pa.pct_high, "lam_p50": pa.lam_p50, "checkpoint": str(ck)}
+    out = LOG_ROOT / "results.json"
+    out.write_text(json.dumps(results, indent=2, sort_keys=True), encoding="utf-8")
+    print(f"wrote {out}", flush=True)
+    # tables (hard vs soft)
+    print("\nProbe A hard vs soft:", flush=True)
+    for h, s in zip(HARD, SOFT):
+        a = results["probes"]["A"][h]
+        b = results["probes"]["A"][s]
+        print(f"{h} p5={a['lam_p5']:.4f} p50={a['lam_p50']:.4f} p95={a['lam_p95']:.4f} std={a['lam_std']:.4f} low={a['pct_low']:.1f}% high={a['pct_high']:.1f}% m_in={a['pct_m_in']:.1f}%", flush=True)
+        print(f"{s} p5={b['lam_p5']:.4f} p50={b['lam_p50']:.4f} p95={b['lam_p95']:.4f} std={b['lam_std']:.4f} low={b['pct_low']:.1f}% high={b['pct_high']:.1f}% m_in={b['pct_m_in']:.1f}%", flush=True)
+    for v in CONSTANTS:
+        print(f"{v} no gate (n/a)", flush=True)
+    print("\nProbe B hard vs soft:", flush=True)
+    for h, s in zip(HARD, SOFT):
+        a = results["probes"]["B"][h]
+        b = results["probes"]["B"][s]
+        print(f"{h} after={a['mean_lam_after']:.4f} base={a['mean_lam_base']:.4f} diff={a['diff']:.4f} sp={a['spearman']:.3f}", flush=True)
+        print(f"{s} after={b['mean_lam_after']:.4f} base={b['mean_lam_base']:.4f} diff={b['diff']:.4f} sp={b['spearman']:.3f}", flush=True)
+    print("\nProbe C hard vs soft:", flush=True)
+    for h, s in zip(HARD, SOFT):
+        a = results["probes"]["C"][h]
+        b = results["probes"]["C"][s]
+        print(f"{h} peak={a['peak_mean']:.4f} half={a['half_str']}", flush=True)
+        print(f"{s} peak={b['peak_mean']:.4f} half={b['half_str']}", flush=True)
+    for v in CONTROLS:
+        c = results["probes"]["C"][v]
+        print(f"{v} peak={c['peak_mean']:.4f} half={c['half_str']} introspect={c['introspect_exposes']}", flush=True)
+    print("\nProbe D1 within/between std:", flush=True)
+    for v in GATED:
+        d = results["probes"]["D1"][v]
+        print(f"{v} within={d['within_std_mean']:.4f} between={d['between_std_mean']:.4f}", flush=True)
+    print("\nProbe D2 percentiles and clamp:", flush=True)
+    for v in GATED:
+        d = results["probes"]["D2"][v]
+        print(f"{v} raw_m p50={d['raw_m']['p50']:.3f} norm_m p50={d['norm_m']['p50']:.3f} s p50={d['s']['p50']:.3f} pre p50={d['pre_act']['p50']:.3f} clamp={d['clamp_pct']:.1f}%", flush=True)
+    print("\nProbe D3 saturation vs steps (rda_gru_surprise):", flush=True)
+    for steps in ("0", "10000", "20000", "40000"):
+        d = results["probes"]["D3"][steps]
+        print(f"steps={steps} total_at_bound={d['total']:.1f}% p50={d['lam_p50']:.4f} ckpt={d['checkpoint']}", flush=True)
+    print("\nPass/fail (C1 <50% at bound, C2 diff>=0.02 or |sp|>=0.1, C4 within_std>=0.02):", flush=True)
+    for v in GATED:
+        a = results["probes"]["A"][v]
+        total = a["pct_low"] + a["pct_high"]
+        c1 = total < 50.0
+        b = results["probes"]["B"][v]
+        c2 = b["diff"] >= 0.02 or abs(b["spearman"]) >= 0.1
+        d1 = results["probes"]["D1"][v]
+        c4 = d1["within_std_mean"] >= 0.02
+        print(f"{v} C1={'PASS' if c1 else 'FAIL'} ({total:.1f}%) C2={'PASS' if c2 else 'FAIL'} (diff={b['diff']:.4f} sp={b['spearman']:.3f}) C4={'PASS' if c4 else 'FAIL'} (within={d1['within_std_mean']:.4f})", flush=True)
+    for v in CONSTANTS:
+        print(f"{v} no gate (n/a) for C1/C4", flush=True)
+    return 0
+
+
+def _main_old() -> int:
+    # legacy in-process path (unused; kept for reference)
+    LOG_ROOT.mkdir(parents=True, exist_ok=True)
+    TRAIN_ROOT.mkdir(parents=True, exist_ok=True)
+    results: dict[str, Any] = {"commit": _git_commit(), "variants": {}, "probes": {}}
     for variant in VARIANTS:
         ckpt = _get_checkpoint(variant)
         results["variants"][variant] = {"checkpoint": str(ckpt)}
         log.info("variant %s checkpoint %s", variant, ckpt)
-        # Probe A/B need lam/m/s
         if variant in RDA_VARIANTS:
-            lams, ms, ss, tick_lam = _collect_ab(ckpt, variant)
-            # need tick_s: recompute from ss? _collect_ab returns tick_lam only; redo tick_s via second pass is heavy.
-            # For simplicity, use ss aggregated per tick approximated by chunking: we stored tick_lam but not tick_s.
-            # Re-run collection for tick_s is skipped; use ss list chunked by 512*? Instead, collect tick_s in _collect_ab.
-            # Workaround: _collect_ab already collected tick_s internally but not returned. Patch: re-collect tick_s via quick loop.
-            # To avoid complexity, compute Probe B from lams/ss flattened (approx).
+            lams, ms, ss, tick_lam, raw_ms, mhats, us, per_ep = _collect_ab(ckpt, variant)
             pa = _probe_a(variant, ckpt, lams, ms)
-            # Build tick series from flattened lams/ss by averaging per 5 agents? Approx: use lams/ss directly for spearman.
-            # For mean after spike, use flattened approach.
             if ss and lams:
-                # approximate tick series by grouping every 5 (agents) - not exact but preserves order
-                # Instead, use _probe_b with tick_lam and ss truncated to len(tick_lam) by sampling
-                # Pad/truncate ss to len(tick_lam)
                 s_tick = ss[:len(tick_lam)] if len(ss) >= len(tick_lam) else ss + [0.0]*(len(tick_lam)-len(ss))
                 pb = _probe_b(variant, ckpt, tick_lam, s_tick)
             else:
                 pb = ProbeB(variant, str(ckpt), 0.0, 0.0, 0.0, 0.0)
+            d1 = _probe_d1(per_ep)
+            d2 = _probe_d2(raw_ms, ms, ss, mhats, us, variant)
             results["probes"].setdefault("A", {})[variant] = {
                 "lam_p5": pa.lam_p5, "lam_p50": pa.lam_p50, "lam_p95": pa.lam_p95,
                 "lam_std": pa.lam_std, "pct_low": pa.pct_low, "pct_high": pa.pct_high,
@@ -437,40 +719,74 @@ def main() -> int:
                 "mean_lam_after": pb.mean_lam_after, "mean_lam_base": pb.mean_lam_base,
                 "diff": pb.diff, "spearman": pb.spearman, "checkpoint": pb.checkpoint,
             }
-        # Probe C for all
+            results["probes"].setdefault("D1", {})[variant] = d1
+            results["probes"].setdefault("D2", {})[variant] = d2
         pc = _probe_c(variant, ckpt)
         results["probes"].setdefault("C", {})[variant] = {
             "peak_mean": pc.peak_mean, "half_mean": pc.half_mean, "half_str": pc.half_str,
             "introspect_exposes": pc.introspect_exposes, "checkpoint": pc.checkpoint,
         }
+    # D3: saturation vs training steps for rda_gru_surprise
+    results["probes"]["D3"] = {}
+    for steps in (0, 10000, 20000, 40000):
+        ck = _train_at_steps("rda_gru_surprise", steps)
+        lams, ms, _, _, _, _, _, _ = _collect_ab(ck, "rda_gru_surprise")
+        pa = _probe_a("rda_gru_surprise", ck, lams, ms)
+        results["probes"]["D3"][str(steps)] = {
+            "pct_low": pa.pct_low, "pct_high": pa.pct_high, "total": pa.pct_low + pa.pct_high,
+            "lam_p50": pa.lam_p50, "checkpoint": str(ck),
+        }
     out = LOG_ROOT / "results.json"
     out.write_text(json.dumps(results, indent=2, sort_keys=True), encoding="utf-8")
     print(f"wrote {out}")
-    # print tables
-    print("\nProbe A (RDA only): variant lam_p5 lam_p50 lam_p95 lam_std pct_low pct_high pct_m_in")
-    for v in RDA_VARIANTS:
+    print("\nProbe A hard vs soft:")
+    for h, s in zip(HARD, SOFT):
+        a = results["probes"]["A"][h]
+        b = results["probes"]["A"][s]
+        print(f"{h} p5={a['lam_p5']:.4f} p50={a['lam_p50']:.4f} p95={a['lam_p95']:.4f} std={a['lam_std']:.4f} low={a['pct_low']:.1f}% high={a['pct_high']:.1f}% m_in={a['pct_m_in']:.1f}%")
+        print(f"{s} p5={b['lam_p5']:.4f} p50={b['lam_p50']:.4f} p95={b['lam_p95']:.4f} std={b['lam_std']:.4f} low={b['pct_low']:.1f}% high={b['pct_high']:.1f}% m_in={b['pct_m_in']:.1f}%")
+    for v in CONSTANTS:
         a = results["probes"]["A"][v]
-        print(f"{v} {a['lam_p5']:.4f} {a['lam_p50']:.4f} {a['lam_p95']:.4f} {a['lam_std']:.4f} {a['pct_low']:.1f}% {a['pct_high']:.1f}% {a['pct_m_in']:.1f}% ckpt={a['checkpoint']}")
-    print("\nProbe B: variant mean_after mean_base diff spearman")
-    for v in RDA_VARIANTS:
-        b = results["probes"]["B"][v]
-        print(f"{v} {b['mean_lam_after']:.4f} {b['mean_lam_base']:.4f} {b['diff']:.4f} {b['spearman']:.3f}")
-    print("\nProbe C: variant peak_mean half_mean introspect")
-    for v in VARIANTS:
+        print(f"{v} (no gate) p5={a['lam_p5']:.4f} p50={a['lam_p50']:.4f} p95={a['lam_p95']:.4f}")
+    print("\nProbe B hard vs soft:")
+    for h, s in zip(HARD, SOFT):
+        a = results["probes"]["B"][h]
+        b = results["probes"]["B"][s]
+        print(f"{h} after={a['mean_lam_after']:.4f} base={a['mean_lam_base']:.4f} diff={a['diff']:.4f} sp={a['spearman']:.3f}")
+        print(f"{s} after={b['mean_lam_after']:.4f} base={b['mean_lam_base']:.4f} diff={b['diff']:.4f} sp={b['spearman']:.3f}")
+    print("\nProbe C hard vs soft:")
+    for h, s in zip(HARD, SOFT):
+        a = results["probes"]["C"][h]
+        b = results["probes"]["C"][s]
+        print(f"{h} peak={a['peak_mean']:.4f} half={a['half_str']}")
+        print(f"{s} peak={b['peak_mean']:.4f} half={b['half_str']}")
+    for v in CONSTANTS + CONTROLS:
         c = results["probes"]["C"][v]
-        print(f"{v} peak={c['peak_mean']:.4f} half={c['half_str']} introspect={c['introspect_exposes']} ckpt={c['checkpoint']}")
-    # pass/fail
-    print("\nPass/fail:")
-    for v in RDA_VARIANTS:
+        print(f"{v} peak={c['peak_mean']:.4f} half={c['half_str']} introspect={c['introspect_exposes']}")
+    print("\nProbe D1 within/between std:")
+    for v in GATED:
+        d = results["probes"]["D1"][v]
+        print(f"{v} within={d['within_std_mean']:.4f} between={d['between_std_mean']:.4f}")
+    print("\nProbe D2 percentiles and clamp:")
+    for v in GATED:
+        d = results["probes"]["D2"][v]
+        print(f"{v} raw_m p50={d['raw_m']['p50']:.3f} norm_m p50={d['norm_m']['p50']:.3f} s p50={d['s']['p50']:.3f} pre p50={d['pre_act']['p50']:.3f} clamp={d['clamp_pct']:.1f}%")
+    print("\nProbe D3 saturation vs steps (rda_gru_surprise):")
+    for steps in ("0", "10000", "20000", "40000"):
+        d = results["probes"]["D3"][steps]
+        print(f"steps={steps} total_at_bound={d['total']:.1f}% p50={d['lam_p50']:.4f} ckpt={d['checkpoint']}")
+    print("\nPass/fail (C1 <50% at bound, C2 diff>=0.02 or |sp|>=0.1, C4 within_std>=0.02):")
+    for v in GATED:
         a = results["probes"]["A"][v]
-        total_at_bound = a["pct_low"] + a["pct_high"]
-        c1 = total_at_bound < 50.0
+        total = a["pct_low"] + a["pct_high"]
+        c1 = total < 50.0
         b = results["probes"]["B"][v]
-        c2 = b["diff"] >= 0.02
-        print(f"{v} C1={'PASS' if c1 else 'FAIL'} ({total_at_bound:.1f}%) C2={'PASS' if c2 else 'FAIL'} (diff={b['diff']:.4f})")
-    halves = [results["probes"]["C"][v]["half_mean"] for v in RDA_VARIANTS]
-    c3 = (max(halves) - min(halves) > 50.0) if halves else False
-    print(f"C3 gated half-lives not all pinned: {'PASS' if c3 else 'FAIL'} halves={halves}")
+        c2 = b["diff"] >= 0.02 or abs(b["spearman"]) >= 0.1
+        d1 = results["probes"]["D1"][v]
+        c4 = d1["within_std_mean"] >= 0.02
+        print(f"{v} C1={'PASS' if c1 else 'FAIL'} ({total:.1f}%) C2={'PASS' if c2 else 'FAIL'} (diff={b['diff']:.4f} sp={b['spearman']:.3f}) C4={'PASS' if c4 else 'FAIL'} (within={d1['within_std_mean']:.4f})")
+    for v in CONSTANTS:
+        print(f"{v} no gate (n/a) for C1/C4")
     return 0
 
 

@@ -1503,3 +1503,11 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
 - Probe C: noise at tick 100, L2 divergence ticks 100-500, peak and half-life averaged over 20 seeds. RDA uses introspect E; gru/transformer introspect does not exist, used hidden state via get_state().
 - Pass/fail: C1 (<50% at bounds) PASS only for constant, FAIL for gated; C2 (diff>=0.02) FAIL all; C3 (half-lives not all pinned) PASS (halves 27-401).
 - Note: `TorchPolicy._load_checkpoint` fails for non-RDA backbones (missing `retention_mode`); driver manually reloads state_dict as workaround. WARNINGs remain in logs.
+
+## Decay probe v1 (decay-v1)
+
+- Fixed loader: `TorchPolicy._load_checkpoint` now evals `_retention`/`_net` submodules instead of backbone (backbones are not nn.Modules). Added `test_every_preset_checkpoint_roundtrip` for all BACKBONES. Full suite: 202 passed.
+- Driver `tools/decay_probe.py` now raises on load failure, loads once per variant, runs each variant in subprocess (30 min timeout), prints progress with elapsed time, does not train constants (reported as no gate n/a), reuses soft checkpoints only if they load and differ from fresh.
+- Trained 40k steps seed 100000 workers=4 CPU for 4 soft variants and fresh hard rda_gru_surprise; reused other hard fresh checkpoints from decay-v0. Eval dev seeds 0-19 Balanced 512 ticks.
+- Probes A/B/C/D1/D2/D3 hard vs soft side by side. C1 <50% at bound FAIL all gated (98-100% at bounds); C2 diff>=0.02 or |sp|>=0.1 FAIL all (diffs 0.0000-0.0030, sp -0.047 to 0.056); C4 within_std>=0.02 PASS all gated (0.0227-0.0483). D3 saturation 100% at 0/10k/20k/40k steps (present at init).
+- Note: introspect exposes only lam/m/s/E, not m_hat/u, so D2 pre_act for soft is 0 (unavailable).
