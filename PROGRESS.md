@@ -1511,3 +1511,11 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
 - Trained 40k steps seed 100000 workers=4 CPU for 4 soft variants and fresh hard rda_gru_surprise; reused other hard fresh checkpoints from decay-v0. Eval dev seeds 0-19 Balanced 512 ticks.
 - Probes A/B/C/D1/D2/D3 hard vs soft side by side. C1 <50% at bound FAIL all gated (98-100% at bounds); C2 diff>=0.02 or |sp|>=0.1 FAIL all (diffs 0.0000-0.0030, sp -0.047 to 0.056); C4 within_std>=0.02 PASS all gated (0.0227-0.0483). D3 saturation 100% at 0/10k/20k/40k steps (present at init).
 - Note: introspect exposes only lam/m/s/E, not m_hat/u, so D2 pre_act for soft is 0 (unavailable).
+
+## Decay probe v2 (decay-v2)
+
+- Additive instrumentation: `introspect()` now exposes `m_hat`/`u`/`pre_act` for soft variants (backbones.py). Goldens unchanged, suite 202 passed.
+- Fixed C1 definition to range-based: at bound if lam <= 0.904921875 or >= 0.993515625. Recomputed from existing checkpoints, no retraining. Hard still ~99.9% at bounds FAIL; soft 40.3-66.7% (one PASS: rda_tf_surprise_soft 40.3%).
+- Diagnosed raw m growth: m starts 0, m_t = 0.99*m_{t-1}+s_t, s = (s_raw - s_mean)/sqrt(s_var+EPS), s_raw = ||pred_o - o_emb|| (or |pred_d - d|). At init s_mean=0 s_var=1 so s=s_raw (hundreds), m accumulates to thousands (hard) / hundreds (soft) with 1/(1-rho)=100 gain. |m| grows with tick (p5 -2789 -> -26172 for gru_surprise). Sign-flip rate 0.002-0.06, norm_m in [0,1] 0.06-5.4%. Pearson(m, cumsum(s)) 0.03-0.41.
+- Gradient: gate params 0 trainable (trainable_gates=False, s detached) so loss grad 0. d lam/d input norm ~0.0738 at init for small m (non-zero), but 0 at trained checkpoints due to clamp saturation (99.9% clamp active).
+- Gru peak 4.69 (decay-v0) vs 15.14 (decay-v1): same checkpoint file logs/decay_probe/train/gru/final.pt (not retrained), same noise (seed 12345, std 0.01), but decay-v0 fell back to fresh policy due to loader bug, decay-v1 loads trained weights after fix.
