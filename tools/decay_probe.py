@@ -169,28 +169,6 @@ def _make_runner(checkpoint: Path, seed: int, variant: str):
     runner = Runner(cfg, seed=seed, agents=5)
     runner.setup()
     runner._ensure_components()
-    # Workaround for TorchPolicy._load_checkpoint bug on non-RDA backbones:
-    # it accesses backbone.retention_mode which GRU/Transformer lack.
-    # If checkpoint failed to load, manually load state_dict.
-    pol = getattr(runner, "_policy", None)
-    if pol is not None and getattr(pol, "_load_error", None):
-        try:
-            import torch as _t
-            data = _t.load(str(checkpoint), map_location="cpu", weights_only=False)
-            arch = data.get("arch")
-            if arch is not None:
-                bb_name = arch.get("backbone", variant)
-                # if current backbone mismatches, rebuild
-                if getattr(pol._backbone, "backbone_name", None) != bb_name and hasattr(pol._backbone, "backbone_name"):
-                    pass
-                pol._backbone._net.load_state_dict(data["state_dict"])
-                ret = getattr(pol._backbone, "_retention", None)
-                if ret is not None and data.get("retention_state_dict") is not None:
-                    ret.load_state_dict(data["retention_state_dict"])
-                pol._trained = True
-                pol._load_error = None
-        except Exception:
-            log.debug("manual checkpoint load failed", exc_info=True)
     return runner
 
 

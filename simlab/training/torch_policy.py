@@ -149,7 +149,7 @@ class TorchPolicy:
         self._checkpoint_path = path
         self._trained = True
         self._train_step = data.get("step") if isinstance(data.get("step"), int) else None
-        if self._backbone.retention_mode in ("surprise_soft", "per_drive_soft"):
+        if getattr(self._backbone, "retention_mode", None) in ("surprise_soft", "per_drive_soft"):
             self._backbone.eval()
 
     def save_checkpoint(self, path: str | Path, step: int | None = None) -> None:

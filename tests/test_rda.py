@@ -706,6 +706,26 @@ def test_checkpoint_save_is_atomic(tmp_path: Path) -> None:
     _policy_frame_produces(loaded)
 
 
+@pytest.mark.parametrize("backbone", ["gru", "transformer"])
+def test_non_rda_checkpoint_loads_via_runner(tmp_path: Path, backbone: str) -> None:
+    """Regression: _load_checkpoint must not require retention_mode."""
+    from dataclasses import replace
+
+    from simlab.core.config import load_config
+    from simlab.core.runner import Runner
+
+    pol = make_policy({"backbone": backbone, "fusion": "concat", "obs_mode": "obs_only", "seed": 0})
+    path = tmp_path / "ckpt.pt"
+    pol.save_checkpoint(path)
+    base = load_config("configs/balanced.toml")
+    cfg = replace(base, policy="learned_torch", drive="simple", policy_checkpoint=str(path))
+    runner = Runner(cfg, seed=0, agents=1)
+    runner.setup()
+    runner._ensure_components()
+    assert runner._policy is not None
+    assert getattr(runner._policy, "_load_error", None) is None
+
+
 def test_truncated_checkpoint_does_not_crash_policy(tmp_path: Path) -> None:
     path = tmp_path / "broken.pt"
     path.write_bytes(b"PK\x03\x04 truncated-garbage-not-a-real-checkpoint")
