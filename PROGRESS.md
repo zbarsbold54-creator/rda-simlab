@@ -1491,3 +1491,15 @@ User-reported: could not find the training tabs, timeline scrubbing felt broken
   so its effective derivative with respect to `m` is zero by design.
 - Final per-file pytest: 199 passed, 0 failed, 0 skipped across 18 files;
   Ruff passed.
+
+## Decay probe (decay-v0)
+
+- Driver: `tools/decay_probe.py` (CPU only, workers=4, OMP/MKL=1). Results: `logs/decay_probe/results.json` (gitignored).
+- Presets verified via registry: `rda_gru_constant`, `rda_gru_surprise`, `rda_gru_per_drive`, `rda_tf_surprise`, `rda_tf_per_drive`, `gru`, `transformer`.
+- Checkpoints: reused 10-iteration `runs/cockpit/gui_check_rda40k_20564/runs/00_rda_gru_surprise_100000/final.pt` for `rda_gru_surprise`; trained 40k steps seed 100000 workers=4 for others under `logs/decay_probe/train/<variant>/final.pt`.
+- Eval: dev seeds 0-19, Balanced preset, 512 ticks per seed.
+- Probe A (RDA only): lam p5/p50/p95/std, % within 5% of bounds (relative), % normalized m in [0,1]. Surprise/per-drive variants ~99-100% at bounds; constant lam=0 (0% at bounds, no m).
+- Probe B: top 5% s, mean lam 10 ticks after vs baseline, Spearman s_t vs lam_{t+1}. Diffs 0.0001-0.0026 (<0.02), Spearman -0.002 to 0.045.
+- Probe C: noise at tick 100, L2 divergence ticks 100-500, peak and half-life averaged over 20 seeds. RDA uses introspect E; gru/transformer introspect does not exist, used hidden state via get_state().
+- Pass/fail: C1 (<50% at bounds) PASS only for constant, FAIL for gated; C2 (diff>=0.02) FAIL all; C3 (half-lives not all pinned) PASS (halves 27-401).
+- Note: `TorchPolicy._load_checkpoint` fails for non-RDA backbones (missing `retention_mode`); driver manually reloads state_dict as workaround. WARNINGs remain in logs.
