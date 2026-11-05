@@ -334,6 +334,9 @@ def _collect_ab(checkpoint: Path, variant: str) -> tuple[list[float], list[float
                         mhats.extend(np.asarray(m["m_hat"], dtype=np.float64).reshape(-1).tolist())
                     if "u" in m:
                         us.extend(np.asarray(m["u"], dtype=np.float64).reshape(-1).tolist())
+                    if "pre_act" in m:
+                        # store in us as pre_act proxy if u missing? keep separate via mhats scaling
+                        pass
                     if "s" in m:
                         s_arr = np.asarray(m["s"], dtype=np.float64).reshape(-1)
                         ss.extend(s_arr.tolist())
@@ -377,9 +380,12 @@ def _probe_a(variant: str, checkpoint: Path, lams: list[float], ms: list[float])
     arr = np.asarray(lams, dtype=np.float64) if lams else np.array([0.0])
     p5, p50, p95 = np.percentile(arr, [5, 50, 95])
     std = float(arr.std())
-    # within 5% of bound value (relative)
-    pct_low = float((np.abs(arr - BASELINE) / BASELINE <= 0.05).mean() * 100.0)
-    pct_high = float((np.abs(arr - LAM_MAX) / LAM_MAX <= 0.05).mean() * 100.0)
+    # correct C1: at bound means within 5% of range from bound
+    _rng = LAM_MAX - BASELINE
+    _low_thr = BASELINE + 0.05 * _rng
+    _high_thr = LAM_MAX - 0.05 * _rng
+    pct_low = float((arr <= _low_thr).mean() * 100.0)
+    pct_high = float((arr >= _high_thr).mean() * 100.0)
     if ms:
         marr = np.asarray(ms, dtype=np.float64)
         pct_m = float(((marr >= 0.0) & (marr <= 1.0)).mean() * 100.0)

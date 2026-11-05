@@ -414,9 +414,12 @@ class RDABackbone(Backbone):
             "d": d.detach().cpu(),
             "E": E.detach().cpu(),
         }
-        for k in ("lam", "m", "s"):
+        for k in ("lam", "m", "s", "m_hat", "u"):
             if k in metrics:
                 self._last_metrics[k] = metrics[k].detach().cpu()
+        if "m_hat" in metrics:
+            _k = float(getattr(self._retention, "soft_gate_k", 1.0))
+            self._last_metrics["pre_act"] = (metrics["m_hat"] * _k).detach().cpu()
 
         f = torch.tanh(net.gru_ih(o_emb) + net.gru_hh(enc_h))
         if self.fusion == "film":
@@ -564,9 +567,12 @@ class RDATransformerBackbone(Backbone):
 
         E, rs_next, metrics = self._retention.step(e, d, rs)
         self._last_metrics = {"d": d.detach().cpu(), "E": E.detach().cpu()}
-        for k in ("lam", "m", "s"):
+        for k in ("lam", "m", "s", "m_hat", "u"):
             if k in metrics:
                 self._last_metrics[k] = metrics[k].detach().cpu()
+        if "m_hat" in metrics:
+            _k = float(getattr(self._retention, "soft_gate_k", 1.0))
+            self._last_metrics["pre_act"] = (metrics["m_hat"] * _k).detach().cpu()
 
         if self.fusion == "film":
             e = e * net.film_scale(E) + net.film_shift(E)
