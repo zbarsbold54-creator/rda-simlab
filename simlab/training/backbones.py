@@ -648,6 +648,8 @@ RETENTION_MODES = (
     "per_drive_tied",
     "surprise_soft",
     "per_drive_soft",
+    "surprise_norm",
+    "per_drive_norm",
 )
 
 

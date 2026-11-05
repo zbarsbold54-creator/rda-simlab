@@ -25,11 +25,12 @@ TRAIN_ROOT = LOG_ROOT / "train"
 
 HARD = ["rda_gru_surprise", "rda_gru_per_drive", "rda_tf_surprise", "rda_tf_per_drive"]
 SOFT = ["rda_gru_surprise_soft", "rda_gru_per_drive_soft", "rda_tf_surprise_soft", "rda_tf_per_drive_soft"]
+NORM = ["rda_gru_surprise_norm", "rda_gru_per_drive_norm", "rda_tf_surprise_norm", "rda_tf_per_drive_norm"]
 CONSTANTS = ["rda_gru_constant", "rda_tf_constant"]
 CONTROLS = ["gru", "transformer"]
-VARIANTS = HARD + SOFT + CONTROLS
-RDA_VARIANTS = HARD + SOFT
-GATED = HARD + SOFT
+VARIANTS = NORM + CONTROLS
+RDA_VARIANTS = NORM
+GATED = NORM
 _POLICY_CACHE: dict[str, Any] = {}
 EVAL_SEEDS = list(range(20))
 TICKS = 512
@@ -592,10 +593,33 @@ def _run_single(variant: str) -> dict[str, Any]:
         out["probes"]["B"] = {"mean_lam_after": pb.mean_lam_after, "mean_lam_base": pb.mean_lam_base, "diff": pb.diff, "spearman": pb.spearman, "checkpoint": pb.checkpoint}
         out["probes"]["D1"] = d1
         out["probes"]["D2"] = d2
+        # C5: median drift, C6: p95 |m_hat|
+        import numpy as _np
+        tl = _np.asarray(tick_lam, dtype=_np.float64) if tick_lam else _np.array([0.0])
+        med_early = float(_np.median(tl[:32])) if len(tl) >= 32 else float(_np.median(tl))
+        med_late = float(_np.median(tl[128:])) if len(tl) > 128 else float(_np.median(tl))
+        c5_drift = abs(med_late - med_early)
+        mh = _np.asarray(mhats, dtype=_np.float64) if mhats else _np.asarray(ms, dtype=_np.float64)
+        p95_abs_mhat = float(_np.percentile(_np.abs(mh), 95)) if len(mh) else 0.0
+        out["probes"]["C5"] = {"med_early": med_early, "med_late": med_late, "drift": c5_drift}
+        out["probes"]["C6"] = {"p95_abs_mhat": p95_abs_mhat}
         print(f"[{variant}] A/B/D1/D2 done elapsed={_time.time()-t0:.1f}s", flush=True)
-    pc = _probe_c(variant, ckpt)
-    out["probes"]["C"] = {"peak_mean": pc.peak_mean, "half_mean": pc.half_mean, "half_str": pc.half_str, "introspect_exposes": pc.introspect_exposes, "checkpoint": pc.checkpoint}
-    print(f"[{variant}] C done elapsed={_time.time()-t0:.1f}s", flush=True)
+        # conditional Probe C: only if C1,C2,C5 pass
+        total = pa.pct_low + pa.pct_high
+        c1 = total < 50.0
+        c2 = pb.diff >= 0.02 or abs(pb.spearman) >= 0.1
+        c5 = c5_drift < 0.02
+        if c1 and c2 and c5:
+            pc = _probe_c(variant, ckpt)
+            out["probes"]["C"] = {"peak_mean": pc.peak_mean, "half_mean": pc.half_mean, "half_str": pc.half_str, "introspect_exposes": pc.introspect_exposes, "checkpoint": pc.checkpoint}
+            print(f"[{variant}] C done elapsed={_time.time()-t0:.1f}s", flush=True)
+        else:
+            out["probes"]["C"] = {"skipped": True, "reason": f"C1={c1} C2={c2} C5={c5}"}
+            print(f"[{variant}] C skipped (C1={c1} C2={c2} C5={c5})", flush=True)
+    else:
+        pc = _probe_c(variant, ckpt)
+        out["probes"]["C"] = {"peak_mean": pc.peak_mean, "half_mean": pc.half_mean, "half_str": pc.half_str, "introspect_exposes": pc.introspect_exposes, "checkpoint": pc.checkpoint}
+        print(f"[{variant}] C done elapsed={_time.time()-t0:.1f}s", flush=True)
     out["wall_time_s"] = _time.time() - t0
     return out
 
@@ -634,66 +658,66 @@ def main() -> int:
             results["probes"].setdefault(k, {})[variant] = v
     for v in CONSTANTS:
         results["variants"][v] = {"checkpoint": "no gate (n/a)"}
-        for k in ("A", "B", "D1", "D2", "C"):
+        for k in ("A", "B", "D1", "D2", "C", "C5", "C6"):
             results["probes"].setdefault(k, {})[v] = {"note": "no gate (n/a)"}
-    # D3 in parent (uses _collect_ab directly)
-    results["probes"]["D3"] = {}
-    for steps in (0, 10000, 20000, 40000):
-        ck = _train_at_steps("rda_gru_surprise", steps)
-        lams, ms, _, _, _, _, _, _ = _collect_ab(ck, "rda_gru_surprise")
-        pa = _probe_a("rda_gru_surprise", ck, lams, ms)
-        results["probes"]["D3"][str(steps)] = {"pct_low": pa.pct_low, "pct_high": pa.pct_high, "total": pa.pct_low + pa.pct_high, "lam_p50": pa.lam_p50, "checkpoint": str(ck)}
+    # load hard/soft numbers from decay-v2 for comparison (no retrain/re-probe)
+    try:
+        v2 = json.loads((LOG_ROOT / "results_v2.json").read_text(encoding="utf-8"))
+        for v in HARD + SOFT:
+            if v in v2.get("probes", {}).get("A", {}):
+                results["probes"].setdefault("A_ref", {})[v] = v2["probes"]["A"][v]
+                results["probes"].setdefault("B_ref", {})[v] = v2["probes"]["B"][v]
+    except Exception:
+        log.debug("load v2 ref failed", exc_info=True)
+    results["probes"]["D3"] = {"skipped": True}
     out = LOG_ROOT / "results.json"
     out.write_text(json.dumps(results, indent=2, sort_keys=True), encoding="utf-8")
     print(f"wrote {out}", flush=True)
-    # tables (hard vs soft)
-    print("\nProbe A hard vs soft:", flush=True)
-    for h, s in zip(HARD, SOFT):
-        a = results["probes"]["A"][h]
-        b = results["probes"]["A"][s]
-        print(f"{h} p5={a['lam_p5']:.4f} p50={a['lam_p50']:.4f} p95={a['lam_p95']:.4f} std={a['lam_std']:.4f} low={a['pct_low']:.1f}% high={a['pct_high']:.1f}% m_in={a['pct_m_in']:.1f}%", flush=True)
-        print(f"{s} p5={b['lam_p5']:.4f} p50={b['lam_p50']:.4f} p95={b['lam_p95']:.4f} std={b['lam_std']:.4f} low={b['pct_low']:.1f}% high={b['pct_high']:.1f}% m_in={b['pct_m_in']:.1f}%", flush=True)
-    for v in CONSTANTS:
-        print(f"{v} no gate (n/a)", flush=True)
-    print("\nProbe B hard vs soft:", flush=True)
-    for h, s in zip(HARD, SOFT):
-        a = results["probes"]["B"][h]
-        b = results["probes"]["B"][s]
-        print(f"{h} after={a['mean_lam_after']:.4f} base={a['mean_lam_base']:.4f} diff={a['diff']:.4f} sp={a['spearman']:.3f}", flush=True)
-        print(f"{s} after={b['mean_lam_after']:.4f} base={b['mean_lam_base']:.4f} diff={b['diff']:.4f} sp={b['spearman']:.3f}", flush=True)
-    print("\nProbe C hard vs soft:", flush=True)
-    for h, s in zip(HARD, SOFT):
-        a = results["probes"]["C"][h]
-        b = results["probes"]["C"][s]
-        print(f"{h} peak={a['peak_mean']:.4f} half={a['half_str']}", flush=True)
-        print(f"{s} peak={b['peak_mean']:.4f} half={b['half_str']}", flush=True)
+    print("\nProbe A norm vs hard/soft (ref from decay-v2):", flush=True)
+    for v in NORM:
+        a = results["probes"]["A"][v]
+        print(f"{v} p5={a['lam_p5']:.4f} p50={a['lam_p50']:.4f} p95={a['lam_p95']:.4f} std={a['lam_std']:.4f} low={a['pct_low']:.1f}% high={a['pct_high']:.1f}% m_in={a['pct_m_in']:.1f}%", flush=True)
+    print("\nProbe B norm:", flush=True)
+    for v in NORM:
+        b = results["probes"]["B"][v]
+        print(f"{v} after={b['mean_lam_after']:.4f} base={b['mean_lam_base']:.4f} diff={b['diff']:.4f} sp={b['spearman']:.3f}", flush=True)
+    print("\nProbe C norm (only if C1,C2,C5 pass):", flush=True)
+    for v in NORM:
+        c = results["probes"]["C"][v]
+        if c.get("skipped"):
+            print(f"{v} skipped ({c.get('reason')})", flush=True)
+        else:
+            print(f"{v} peak={c['peak_mean']:.4f} half={c['half_str']}", flush=True)
     for v in CONTROLS:
         c = results["probes"]["C"][v]
         print(f"{v} peak={c['peak_mean']:.4f} half={c['half_str']} introspect={c['introspect_exposes']}", flush=True)
-    print("\nProbe D1 within/between std:", flush=True)
+    print("\nProbe D1 within/between std norm:", flush=True)
     for v in GATED:
         d = results["probes"]["D1"][v]
         print(f"{v} within={d['within_std_mean']:.4f} between={d['between_std_mean']:.4f}", flush=True)
-    print("\nProbe D2 percentiles and clamp:", flush=True)
+    print("\nProbe D2 percentiles and clamp norm:", flush=True)
     for v in GATED:
         d = results["probes"]["D2"][v]
         print(f"{v} raw_m p50={d['raw_m']['p50']:.3f} norm_m p50={d['norm_m']['p50']:.3f} s p50={d['s']['p50']:.3f} pre p50={d['pre_act']['p50']:.3f} clamp={d['clamp_pct']:.1f}%", flush=True)
-    print("\nProbe D3 saturation vs steps (rda_gru_surprise):", flush=True)
-    for steps in ("0", "10000", "20000", "40000"):
-        d = results["probes"]["D3"][steps]
-        print(f"steps={steps} total_at_bound={d['total']:.1f}% p50={d['lam_p50']:.4f} ckpt={d['checkpoint']}", flush=True)
-    print("\nPass/fail (C1 <50% at bound, C2 diff>=0.02 or |sp|>=0.1, C4 within_std>=0.02):", flush=True)
+    print("\nC5 drift and C6 p95|m_hat| norm:", flush=True)
+    for v in GATED:
+        c5 = results["probes"]["C5"][v]
+        c6 = results["probes"]["C6"][v]
+        print(f"{v} C5 drift={c5['drift']:.4f} (early={c5['med_early']:.4f} late={c5['med_late']:.4f}) C6 p95|m_hat|={c6['p95_abs_mhat']:.4f}", flush=True)
+    print("\nPass/fail (C1 <50% at bound, C2 diff>=0.02 or |sp|>=0.1, C5 drift<0.02, C6 p95<3):", flush=True)
     for v in GATED:
         a = results["probes"]["A"][v]
         total = a["pct_low"] + a["pct_high"]
         c1 = total < 50.0
         b = results["probes"]["B"][v]
         c2 = b["diff"] >= 0.02 or abs(b["spearman"]) >= 0.1
-        d1 = results["probes"]["D1"][v]
-        c4 = d1["within_std_mean"] >= 0.02
-        print(f"{v} C1={'PASS' if c1 else 'FAIL'} ({total:.1f}%) C2={'PASS' if c2 else 'FAIL'} (diff={b['diff']:.4f} sp={b['spearman']:.3f}) C4={'PASS' if c4 else 'FAIL'} (within={d1['within_std_mean']:.4f})", flush=True)
+        c5d = results["probes"]["C5"][v]["drift"]
+        c5 = c5d < 0.02
+        c6v = results["probes"]["C6"][v]["p95_abs_mhat"]
+        c6 = c6v < 3.0
+        print(f"{v} C1={'PASS' if c1 else 'FAIL'} ({total:.1f}%) C2={'PASS' if c2 else 'FAIL'} (diff={b['diff']:.4f} sp={b['spearman']:.3f}) C5={'PASS' if c5 else 'FAIL'} (drift={c5d:.4f}) C6={'PASS' if c6 else 'FAIL'} (p95={c6v:.4f})", flush=True)
     for v in CONSTANTS:
-        print(f"{v} no gate (n/a) for C1/C4", flush=True)
+        print(f"{v} no gate (n/a)", flush=True)
     return 0
 
 

@@ -118,7 +118,7 @@ class Retention(nn.Module):
         h = self.hidden
         if mode in ("fixed", "constant"):
             return n + h + n
-        if mode in ("surprise", "surprise_rand", "surprise_soft"):
+        if mode in ("surprise", "surprise_rand", "surprise_soft", "surprise_norm"):
             return n + 1 + h + n
         if mode == "per_drive_tied":
             return n * 3 + h + 1
@@ -139,7 +139,7 @@ class Retention(nn.Module):
                 "prev_e": rs[:, n : n + h],
                 "prev_d": rs[:, n + h : n + h + n],
             }
-        if mode in ("surprise", "surprise_rand", "surprise_soft"):
+        if mode in ("surprise", "surprise_rand", "surprise_soft", "surprise_norm"):
             return {
                 "E": rs[:, :n],
                 "m": rs[:, n : n + 1],
@@ -284,6 +284,27 @@ class Retention(nn.Module):
             )
             return E_next, rs_next, metrics
 
+        if mode == "surprise_norm":
+            m_prev = parts["m"]
+            s_raw = (self._base.pred_o(prev_e) - o_emb).norm(dim=1, keepdim=True)
+            s_raw_d = s_raw.detach()
+            if training:
+                self.s_mean = self._ema(self.s_mean, s_raw_d.mean())
+                self.s_var = self._ema(self.s_var, s_raw_d.var(unbiased=False))
+            s = (s_raw - self.s_mean) / torch.sqrt(self.s_var + EPS)
+            s = s.detach()
+            s_c = torch.clamp(s, -3.0, 3.0)
+            m = self.rho * m_prev + (1.0 - self.rho) * s_c
+            m_std = ((1.0 - self.rho) / (1.0 + self.rho)) ** 0.5
+            m_hat = m_prev / m_std
+            pre_act = self.soft_gate_k * m_hat
+            u = torch.sigmoid(pre_act)
+            lam = self.baseline + (self.gate_lambda_max - self.baseline) * u
+            E_next = lam * E + (1.0 - lam) * d
+            rs_next = self._assemble({"E": E_next, "m": m, **next_prev})
+            metrics.update({"lam": lam, "m": m, "s": s, "E": E_next, "u": u, "m_hat": m_hat, "pre_act": pre_act})
+            return E_next, rs_next, metrics
+
         # --- surprise-family modes (shared G1 gate)
         if mode in ("surprise", "surprise_rand"):
             m_prev = parts["m"]
@@ -337,6 +358,19 @@ class Retention(nn.Module):
             metrics.update(
                 {"lam": lam, "m": m, "s": s, "E": E_next, "u": u, "m_hat": m_hat}
             )
+            return E_next, rs_next, metrics
+
+        if mode == "per_drive_norm":
+            s_c = torch.clamp(s, -3.0, 3.0)
+            m = self.rho * m_prev + (1.0 - self.rho) * s_c
+            m_std = ((1.0 - self.rho) / (1.0 + self.rho)) ** 0.5
+            m_hat = m_prev / m_std
+            pre_act = self.soft_gate_k * m_hat
+            u = torch.sigmoid(pre_act)
+            lam = self.baseline + (self.gate_lambda_max - self.baseline) * u
+            E_next = lam * E + (1.0 - lam) * d
+            rs_next = self._assemble({"E": E_next, "m": m, **next_prev})
+            metrics.update({"lam": lam, "m": m, "s": s, "E": E_next, "u": u, "m_hat": m_hat, "pre_act": pre_act})
             return E_next, rs_next, metrics
 
         if mode == "per_drive_tied":

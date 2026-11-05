@@ -457,6 +457,8 @@ _RETENTION_DESC = {
     "per_drive_tied": "per-drive gate tied to G1",
     "surprise_soft": "soft sigmoid G1 gate ablation",
     "per_drive_soft": "soft sigmoid per-drive gate ablation",
+    "surprise_norm": "normalized sigmoid G1 gate",
+    "per_drive_norm": "normalized sigmoid per-drive gate",
 }
 for _kind, _bb_desc in (("gru", "GRU encoder"), ("tf", "Transformer encoder")):
     for _mode, _desc in _RETENTION_DESC.items():
