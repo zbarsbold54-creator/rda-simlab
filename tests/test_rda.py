@@ -726,6 +726,31 @@ def test_non_rda_checkpoint_loads_via_runner(tmp_path: Path, backbone: str) -> N
     assert getattr(runner._policy, "_load_error", None) is None
 
 
+def test_every_preset_checkpoint_roundtrip(tmp_path: Path) -> None:
+    """Every registry preset must save/load and produce identical outputs."""
+    from simlab.training.backbones import BACKBONES
+
+    for backbone in sorted(BACKBONES):
+        pol = make_policy({"backbone": backbone, "fusion": "concat", "obs_mode": "obs_drives", "seed": 0})
+        path = tmp_path / f"{backbone}.pt"
+        pol.save_checkpoint(path)
+        loaded = _policy_from_checkpoint(path)
+        assert loaded._load_error is None, backbone
+        # fixed input: same x/h -> identical outputs (both in eval so running stats frozen)
+        for _p in (pol, loaded):
+            _ret = getattr(_p._backbone, "_retention", None)
+            if _ret is not None and hasattr(_ret, "eval"):
+                _ret.eval()
+        x = torch.zeros(1, pol._in_dim)
+        h = pol._backbone.initial_state(1)
+        with torch.no_grad():
+            a1, v1, h1 = pol.frame_step(x, h, None)
+            a2, v2, h2 = loaded.frame_step(x, h, None)
+        assert torch.allclose(a1, a2, atol=1e-6), backbone
+        assert torch.allclose(v1, v2, atol=1e-6), backbone
+        assert torch.allclose(h1, h2, atol=1e-6), backbone
+
+
 def test_truncated_checkpoint_does_not_crash_policy(tmp_path: Path) -> None:
     path = tmp_path / "broken.pt"
     path.write_bytes(b"PK\x03\x04 truncated-garbage-not-a-real-checkpoint")

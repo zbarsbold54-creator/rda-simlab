@@ -150,7 +150,10 @@ class TorchPolicy:
         self._trained = True
         self._train_step = data.get("step") if isinstance(data.get("step"), int) else None
         if getattr(self._backbone, "retention_mode", None) in ("surprise_soft", "per_drive_soft"):
-            self._backbone.eval()
+            # Backbone is not an nn.Module; eval its submodules so running stats freeze.
+            for _sub in (getattr(self._backbone, "_retention", None), getattr(self._backbone, "_net", None)):
+                if _sub is not None and hasattr(_sub, "eval"):
+                    _sub.eval()
 
     def save_checkpoint(self, path: str | Path, step: int | None = None) -> None:
         data = {
