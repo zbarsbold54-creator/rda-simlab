@@ -1,0 +1,54 @@
+# Virtual environments
+.venv*/
+venv/
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Model checkpoints and datasets
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.gguf
+*.bin
+checkpoints/
+datasets/
+
+# Logs and runs (curated files whitelisted below)
+logs/
+runs/
+
+# IDE and OS
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini
+
+# Secrets and local state
+.env*
+wandb/
+
+# Backup and temp files
+*.bak*
+*.tmp*
+*.pre-promote-*
+*.pid
+*.log
+*.err
+
+# Obsidian per-machine state
+.obsidian/
+
+# --- Whitelisted curated results (tracked despite logs/ and *.pt above) ---
+!rda/logs/pe_1000.json
+!rda/logs/pe_1000.txt
+!simlab/logs/overnight/testeval_*.json
+!simlab/logs/overnight/testeval_summary.csv
+!simlab/tests/fixtures/learner_v0_final.pt
+!rda/results/
+!simlab/docs/baselines.json
