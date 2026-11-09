@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location "C:\AI\nanochat"
+Set-Location "C:\AI\rda-simlab\rda"
 $py = ".\.venv\Scripts\python.exe"
 $timeoutSeconds = 5400
 $timeoutLabel = "TIMEOUT after 90 min"

@@ -12,7 +12,7 @@
 
 $ErrorActionPreference = "Stop"
 $py = ".\.venv\Scripts\python.exe"
-Set-Location "C:\AI\nanochat"
+Set-Location "C:\AI\rda-simlab\rda"
 
 # Per-run wall-clock cap in SECONDS. 90 min = 5400 s. Stored in seconds so the
 # timeout-path self-test can pass a 5-second limit without a fractional-minute

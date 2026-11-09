@@ -41,6 +41,8 @@ logs/
 # Force-added logs exception: keep pe_1000.json and pe_1000.txt
 !logs/pe_1000.json
 !logs/pe_1000.txt
+!results/lm_pilot/
+!results/lm_pilot/*.csv
 
 # Environment and IDE junk
 .env*

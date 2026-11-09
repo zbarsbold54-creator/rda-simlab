@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$repoRoot = 'C:\AI\nanochat'
+$repoRoot = 'C:\AI\rda-simlab\rda'
 $runTag = 'recall-A-nomask-s43-w20'
 $runDir = Join-Path $repoRoot $runTag
 $lockPath = Join-Path $repoRoot 'run_manip_check.pid'
@@ -189,7 +189,7 @@ try {
     $evalWrapper = Join-Path $runDir 'eval_nomask_wrapper.py'
     @'
 import os, sys
-sys.path.insert(0, r"C:\AI\nanochat")
+sys.path.insert(0, r"C:\AI\rda-simlab\rda")
 from diagnostics import recall_models
 _real_load_model = recall_models.load_model
 def _load_model(checkpoint_dir, step, device, seed, segment_len=128, decay_override=None):

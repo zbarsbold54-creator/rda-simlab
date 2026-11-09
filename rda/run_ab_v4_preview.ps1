@@ -16,7 +16,7 @@ param([int]$BudgetMinutes = 35)
 
 $ErrorActionPreference = "Stop"
 $py = ".\.venv\Scripts\python.exe"
-Set-Location "C:\AI\nanochat"
+Set-Location "C:\AI\rda-simlab\rda"
 
 $env:NANOCHAT_DATASET   = "fineweb-edu"
 $env:PYTHONIOENCODING    = "utf-8"

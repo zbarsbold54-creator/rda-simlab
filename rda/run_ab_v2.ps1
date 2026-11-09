@@ -23,7 +23,7 @@
 
 $ErrorActionPreference = "Stop"
 $py = ".\.venv\Scripts\python.exe"
-$root = "C:\AI\nanochat"
+$root = "C:\AI\rda-simlab\rda"
 Set-Location $root
 
 # Environment: local shards + UTF-8 console. Both matter -- without the second,
@@ -75,7 +75,7 @@ function Build-Cmd([string]$arm, [int]$seed) {
 # but each element must already be a single token. Every element here is either
 # "-m"/"scripts.base_train" or a "--flag=value" with no space, so no element can
 # be split. The exe path is passed via -FilePath, NOT -ArgumentList, so the
-# space in "C:\AI\nanochat\...\python.exe" is handled by the OS, not by us.
+# space in "C:\AI\rda-simlab\rda\...\python.exe" is handled by the OS, not by us.
 function Invoke-Run([string]$py, [string[]]$argv, [string]$log) {
     $out = "$log.out"
     $err = "$log.err"

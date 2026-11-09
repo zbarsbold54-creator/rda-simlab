@@ -1,0 +1,19 @@
+{
+  "cap_pct": 0.0,
+  "ci": [
+    0.0,
+    0.0
+  ],
+  "death_cause": {
+    "hazard": 96,
+    "starvation": 4,
+    "truncation": 0
+  },
+  "food_eaten_per_agent": 5.94,
+  "food_left_mean": 392.556,
+  "hash": "aaa1c2cf45ba39df",
+  "hazard_contacts_per_1000": 33.008,
+  "mean_energy": 92.661,
+  "median_survival": 671,
+  "wall_time_s": 21.45
+}

@@ -24,6 +24,8 @@ _*.txt
 
 results/
 logs/
+!logs/overnight/testeval_*.json
+!logs/overnight/testeval_summary.csv
 runs/train/
 runs/cockpit/
 logs_headless_test_pytest.txt
