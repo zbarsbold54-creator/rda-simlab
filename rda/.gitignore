@@ -1,0 +1,78 @@
+.venv/
+__pycache__/
+*.pyc
+dev-ignore/
+report.md
+eval_bundle/
+base_checkpoints/
+
+# Generated training/eval artifacts. These are reproducible outputs, not
+# source: kept on disk, excluded from git.
+logs/
+eval/eval_anomaly_set.jsonl
+eval/recall_comparison.json
+
+# Local run drivers. Regenerated per sweep and specific to one machine's GPU
+# timing, so they are working scripts rather than source.
+run_sweep.ps1
+
+# Model checkpoints and dataset files
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.gguf
+*.bin
+*.dll
+
+# Virtual environments
+venv/
+.venv/
+
+# Result and log directories to exclude (with exception for pe_1000 files)
+lm_pilot/
+lm_pilot_smoke/
+recall-A-nomask-s43-w20/
+logs/
+*.log
+*.err
+*.pid
+
+# Force-added logs exception: keep pe_1000.json and pe_1000.txt
+!logs/pe_1000.json
+!logs/pe_1000.txt
+
+# Environment and IDE junk
+.env*
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# Secrets
+.env
+
+# Local setup
+CLAUDE.md
+wandb/
+
+# Backup and temp files
+*.bak*
+*.tmp*
+*.pre-promote-*
+
+# Obsidian (the research/ folder is edited as an Obsidian vault). The config
+# and workspace state are per-machine and per-user -- they record window
+# positions, pane layout and plugin choices, which are noise in a repo and
+# cause merge conflicts on every layout change.
+.obsidian/
+
+# Obsidian scratch artifacts. Created empty by Obsidian when a vault is opened,
+# so they carry no content worth versioning:
+#   Untitled.canvas          -- an empty canvas
+#   YYYY-MM-DD.md            -- an empty daily note for the day the vault opened
+# Real research notes in research/ are tracked normally; only these generated
+# placeholders are excluded. If a daily note ever contains real writing,
+# delete its line here and it will be tracked from then on.
+research/Untitled.canvas
+research/2026-10-01.md

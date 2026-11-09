@@ -1,0 +1,18 @@
+POWER_DID_GPU base_accuracy=0.0638020833333333 simulations=2000 bootstrap_reps=0 seed=20261011
+SELF_CHECK_PASS gaussian_K3_sf=0.0000 gaussian_K3_perm=0.0479 gaussian_K5_sf=0.0297 gaussian_K5_perm=0.0473 generated_K3_sf=0.0000 generated_K3_perm=0.0496 generated_K5_sf=0.0284 generated_K5_perm=0.0449
+MIN_P K=5 min_p=0.031250 min_p_perm=0.003968
+POWER K=5 N=6144 delta=0.0 sigma_seed=0.005 power_sign_flip=0.0320 power_threshold=0.0015 power_perm=0.0465
+POWER K=5 N=6144 delta=0.0 sigma_seed=0.01 power_sign_flip=0.0310 power_threshold=0.0005 power_perm=0.0495
+POWER K=5 N=6144 delta=0.0 sigma_seed=0.02 power_sign_flip=0.0320 power_threshold=0.0030 power_perm=0.0540
+POWER K=5 N=6144 delta=0.01 sigma_seed=0.005 power_sign_flip=0.4315 power_threshold=0.0795 power_perm=0.6700
+POWER K=5 N=6144 delta=0.01 sigma_seed=0.01 power_sign_flip=0.2260 power_threshold=0.0260 power_perm=0.3665
+POWER K=5 N=6144 delta=0.01 sigma_seed=0.02 power_sign_flip=0.0925 power_threshold=0.0075 power_perm=0.1730
+POWER K=5 N=6144 delta=0.02 sigma_seed=0.005 power_sign_flip=0.9060 power_threshold=0.5775 power_perm=0.9970
+POWER K=5 N=6144 delta=0.02 sigma_seed=0.01 power_sign_flip=0.6010 power_threshold=0.1580 power_perm=0.8160
+POWER K=5 N=6144 delta=0.02 sigma_seed=0.02 power_sign_flip=0.2435 power_threshold=0.0345 power_perm=0.4105
+POWER K=5 N=6144 delta=0.03 sigma_seed=0.005 power_sign_flip=0.9940 power_threshold=0.9445 power_perm=1.0000
+POWER K=5 N=6144 delta=0.03 sigma_seed=0.01 power_sign_flip=0.8735 power_threshold=0.4735 power_perm=0.9885
+POWER K=5 N=6144 delta=0.03 sigma_seed=0.02 power_sign_flip=0.4370 power_threshold=0.0750 power_perm=0.6605
+POWER K=5 N=6144 delta=0.05 sigma_seed=0.005 power_sign_flip=1.0000 power_threshold=1.0000 power_perm=1.0000
+POWER K=5 N=6144 delta=0.05 sigma_seed=0.01 power_sign_flip=0.9960 power_threshold=0.9510 power_perm=1.0000
+POWER K=5 N=6144 delta=0.05 sigma_seed=0.02 power_sign_flip=0.8075 power_threshold=0.3630 power_perm=0.9630

@@ -1,0 +1,94 @@
+﻿GIT_COMMIT: 717c3d7c9d107d47c6680fa79218f25a378042af
+ARM: A
+TAG: recall-A-s43-w5-v2
+SEED: 43
+ANSWER_WEIGHT: 5
+START: 2026-10-11T13:36:14
+COMMAND: C:\AI\nanochat\.venv\Scripts\python.exe -m scripts.base_train --model-tag recall-A-s43-w5-v2 --seed 43 --depth=8 --aspect-ratio=96 --head-dim=128 --max-seq-len=1024 --window-pattern=L --device-batch-size=2 --total-batch-size=32768 --num-iterations=1200 --eval-every=300 --eval-tokens=524288 --core-metric-every=-1 --sample-every=-1 --segment-len=128 --synthetic-recall-frac=0.5 --recall-answer-weight=5
+
+===== STDOUT =====
+
+                                                       █████                █████
+                                                      ░░███                ░░███
+     ████████    ██████   ████████    ██████   ██████  ░███████    ██████  ███████
+    ░░███░░███  ░░░░░███ ░░███░░███  ███░░███ ███░░███ ░███░░███  ░░░░░███░░░███░
+     ░███ ░███   ███████  ░███ ░███ ░███ ░███░███ ░░░  ░███ ░███   ███████  ░███
+     ░███ ░███  ███░░███  ░███ ░███ ░███ ░███░███  ███ ░███ ░███  ███░░███  ░███ ███
+     ████ █████░░████████ ████ █████░░██████ ░░██████  ████ █████░░███████  ░░█████
+    ░░░░ ░░░░░  ░░░░░░░░ ░░░░ ░░░░░  ░░░░░░   ░░░░░░  ░░░░ ░░░░░  ░░░░░░░░   ░░░░░
+    
+TREE: DIRTY -- this run did NOT execute the committed code alone.
+  commit=717c3d7c9d107d47c6680fa79218f25a378042af
+  Uncommitted changes present at start:
+    D .claude/skills/read-arxiv-paper/SKILL.md
+     M diagnostics/eval_recall.py
+     M nanochat/recall_data.py
+     M research/CURRENT_STATE.md
+     M "research/RDA and Persistent State.md"
+     M scripts/base_train.py
+    ?? docs/decay_semantics.md
+    ?? dry_run_output.txt
+    ?? research/CODE_REVIEW.md
+    ?? research/LEAK_STATUS.md
+    ?? "research/Untitled 1.canvas"
+    ?? research/Untitled.base
+    ?? results/recall_benchmark/calib/no_context_preflight.txt
+    ?? results/recall_benchmark/calib/train_recall-A-s43-w5-v2.txt
+    ?? results/recall_benchmark/calib/train_recall-A-s43-w5-v2.txt.err
+    ?? results/recall_benchmark/calib/train_recall-A-s43-w5-v2.txt.out
+    ?? results/recall_benchmark/default_v0.txt
+  diff_sha256=ec55e6dba741e0a5fd3fa6213c0fd50fc8248e55c7cbb5df57a3874dba2533a4
+Autodetected device type: cuda
+GPU: NVIDIA GeForce RTX 5060 Ti | Peak FLOPS (BF16): inf
+COMPUTE_DTYPE: torch.bfloat16 (auto-detected: CUDA SM 120 (bf16 supported))
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+WARNING: Flash Attention 3 not available, using PyTorch SDPA fallback
+WARNING: Training will be less efficient without FA3
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Vocab size: 32,768
+Model config:
+{
+  "sequence_len": 1024,
+  "vocab_size": 32768,
+  "n_layer": 8,
+  "n_head": 6,
+  "n_kv_head": 6,
+  "n_embd": 768,
+  "window_pattern": "L",
+  "segment_len": 128
+}
+WARNING: torch.compile disabled (Triton unavailable on this platform); running eager. Slower, same numerics.
+Parameter counts:
+wte                     : 25,165,824
+value_embeds            : 100,663,296
+lm_head                 : 25,165,824
+transformer_matrices    : 56,623,392
+scalars                 : 42
+total                   : 207,618,378
+Estimated FLOPs per token: 5.662329e+08
+Scaling LRs by 0.2500 for batch size 32,768 (reference: 524,288)
+Scaling weight decay from 0.280000 to 0.195865 for depth 8
+Scaling the LR for the AdamW parameters ∝1/√(768/768) = 1.000000
+Using user-provided number of iterations: 1,200
+Total number of training tokens: 39,321,600
+Tokens : Scaling params ratio: 0.48
+Total training FLOPs estimate: 2.226518e+16
+Tokens / micro-batch / rank: 2 x 1024 = 2,048
+Tokens / micro-batch: 2,048
+Total batch size 32,768 => gradient accumulation steps: 16
+Step 00000 | Validation bpb: 3.144260 | state_mode=n/a(no-rda)
+===== STDERR =====
+2026-10-11 13:36:19,447 - nanochat.common - [32m[1mINFO[0m - Distributed world size: 1
+2026-10-11 13:36:19,449 - nanochat.common - [33m[1mWARNING[0m - Peak flops undefined for: NVIDIA GeForce RTX 5060 Ti, MFU will show as 0%
+2026-10-11 13:36:28,367 - nanochat.checkpoint_manager - [32m[1mINFO[0m - Saved model parameters to: C:\Users\HiTech\.cache\nanochat\base_checkpoints\recall-A-s43-w5-v2\model_000000.pt
+2026-10-11 13:36:28,370 - nanochat.checkpoint_manager - [32m[1mINFO[0m - Saved metadata to: C:\Users\HiTech\.cache\nanochat\base_checkpoints\recall-A-s43-w5-v2\meta_000000.json
+2026-10-11 13:36:28,371 - nanochat.checkpoint_manager - [32m[1mINFO[0m - Saved optimizer state to: C:\Users\HiTech\.cache\nanochat\base_checkpoints\recall-A-s43-w5-v2\optim_000000_rank0.pt
+Traceback (most recent call last):
+  File "C:\Users\HiTech\AppData\Roaming\uv\python\cpython-3.10-windows-x86_64-none\lib\runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "C:\Users\HiTech\AppData\Roaming\uv\python\cpython-3.10-windows-x86_64-none\lib\runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "C:\AI\nanochat\scripts\base_train.py", line 1159, in <module>
+    answer_loss_sums[class_idx] += detached_loss[
+IndexError: too many indices for tensor of dimension 1
+===== END (exit=1) =====

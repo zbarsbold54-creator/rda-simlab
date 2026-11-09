@@ -1,0 +1,28 @@
+Generator audit: corrected recall data, 2026-10-11
+
+Input: build_eval_grid(n_rows=2048), 4,096 events.
+
+Mutual information in bits; empirical permutation null uses 500 shuffles
+(seed 835):
+measure       observed   null mean   null 95% interval
+key-value     0.039325   0.040011    [0.032593, 0.047696]
+index mod 4   0.009869   0.008028    [0.005388, 0.011398]
+index mod 8   0.022388   0.018734    [0.014322, 0.024123]
+index mod 16  0.045911   0.040495    [0.032973, 0.047935]
+All observed values are within the empirical permutation-null 95% intervals.
+
+Distinct (class, key, value) triples: 512 / 512 possible. Every class/key
+combination occurs with multiple values; every key occurs with multiple values
+across classes. Keys are distinct within every row.
+
+For every delay bucket {16, 48, 192, 320, 448, 576, 704, 832} and each class,
+all 16 value IDs occur exactly 16 times among 256 events.
+
+Training stream for 1,200 iterations, 16 accumulation microsteps, one
+synthetic row per microstep: (seed=0, index=0..19199), 19,200 unique rows.
+Evaluation stream: (seed=1000000000, index=0..2047), 2,048 rows.
+Intersection: 0 row identities.
+
+Assertions passed for 2,048 eval rows / 4,096 events: class/delay value
+marginals, MI versus null, pair variation, disjoint streams, distinct row
+keys, key/value token pools, query targets, and answer-mask positions.

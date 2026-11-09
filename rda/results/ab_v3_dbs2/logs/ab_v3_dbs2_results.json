@@ -1,0 +1,48 @@
+﻿{
+    "label":  "ab_v3_dbs2",
+    "written_utc":  "2026-10-10T12:47:26Z",
+    "head":  "5566d90bc39ad71b06be535ff33a919e1606498f",
+    "metric_line":  "Step 00600 | Validation bpb: \u003cx\u003e   (scripts/base_train.py:740)",
+    "base_flags":  [
+                       "--depth=8",
+                       "--aspect-ratio=96",
+                       "--head-dim=128",
+                       "--max-seq-len=1024",
+                       "--window-pattern=L",
+                       "--device-batch-size=2",
+                       "--total-batch-size=32768",
+                       "--num-iterations=600",
+                       "--eval-every=50",
+                       "--eval-tokens=524288",
+                       "--core-metric-every=-1",
+                       "--sample-every=-1"
+                   ],
+    "arms":  {
+                 "baseline_ref":  "from ab_v2 at commit f272938",
+                 "Bprime_ref":  "from ab_v2 at commit f272938",
+                 "C":  "--rda --rda-const-state"
+             },
+    "runs":  {
+                 "Bprime_s42_dbs2":  {
+                                         "arm":  "Bprime",
+                                         "seed":  42,
+                                         "tag":  "ab-v3-Bprime-s42-dbs2",
+                                         "bpb_final":  1.277996,
+                                         "wall_minutes":  22.91,
+                                         "train_minutes":  19.5,
+                                         "log":  "logs\\ab_v3_dbs2_Bprime_s42_dbs2_s42.txt"
+                                     },
+                 "C_s42_dbs2":  {
+                                    "arm":  "C",
+                                    "seed":  42,
+                                    "tag":  "ab-v3-C-s42-dbs2",
+                                    "bpb_final":  1.277748,
+                                    "wall_minutes":  20.48,
+                                    "train_minutes":  17,
+                                    "log":  "logs\\ab_v3_dbs2_C_s42_dbs2_s42.txt"
+                                }
+             },
+    "halted":  null,
+    "timeout_seconds_per_run":  5400,
+    "timeout_label":  "TIMEOUT after 90 min"
+}

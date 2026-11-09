@@ -1,0 +1,55 @@
+# Answer-weight selection record
+
+Date: 2026-10-11
+Branch: exp/recall-benchmark-20261011
+
+## Decision
+
+Selected answer weight: 20.
+
+Gate: delay-16 accuracy must be at least 0.80 for both SALIENT and ORDINARY.
+
+- Weight 5: delay-16 SALIENT 0.062500, ORDINARY 0.062500 -> FAIL.
+- Weight 20: delay-16 SALIENT 0.996094, ORDINARY 1.000000 -> PASS.
+
+The first passing setting is frozen for all arms.
+
+## Supporting inference-only audit (weight-20 checkpoint, step 1200)
+
+Teacher-forced value-16 NLL / accuracy:
+
+- delay 16 SALIENT: NLL 0.010050, accuracy 0.996094
+- delay 16 ORDINARY: NLL 0.002315, accuracy 1.000000
+- delay 48 SALIENT: NLL 0.001724, accuracy 1.000000
+- delay 48 ORDINARY: NLL 0.001244, accuracy 1.000000
+- CROSS buckets 192-832: NLL approximately 2.7729-2.8057, accuracy 0.042969-0.078125
+- ln(16) = 2.772589
+
+Final-checkpoint answer-only NLL over 200 training rows:
+
+- SALIENT: 2.150043
+- ORDINARY: 1.901162
+
+Training-stream sample (200 rows, 400 events):
+
+- Delay fractions: 16=0.1325, 48=0.1375, 192=0.1325, 320=0.1400, 448=0.1225, 576=0.0875, 704=0.1175, 832=0.1300
+- CROSS events: 292/400 = 0.73
+- Rows with at least one CROSS event: 0.925
+- Rows with both events CROSS: 0.535
+- WITHIN-only rows: 0.075
+- Mixed rows: 0.39
+
+The high step-1150 weighted training loss is therefore not explained by unsolved WITHIN rows: the model solves WITHIN eval buckets and remains at chance on CROSS buckets, which dominate the training stream.
+
+## Controls
+
+No-context controls were within their permutation-null CIs for both calibration runs. The CROSS leak stop rule did not fire.
+
+## Commands
+
+- Calibration driver: powershell -NoProfile -ExecutionPolicy Bypass -File .\run_recall_calib.ps1 -Arm A -AnswerWeight 20 -ModelTag recall-A-s43-w20-v3
+- Eval: python -m diagnostics.eval_recall --checkpoint-dir C:\Users\HiTech\.cache\nanochat\base_checkpoints\recall-A-s43-w20-v3 --step 1200 --device-batch-size 2 --n-rows 2048 --seed 43 --allow-cross-above-0.09
+
+## Checkpoint
+
+C:\Users\HiTech\.cache\nanochat\base_checkpoints\recall-A-s43-w20-v3\model_001200.pt

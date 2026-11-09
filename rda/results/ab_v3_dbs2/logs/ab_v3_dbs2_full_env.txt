@@ -1,0 +1,62 @@
+﻿Captured: 2026-10-11 08:23:27 +08:00
+Code under test HEAD: 5566d90bc39ad71b06be535ff33a919e1606498f
+git status --short --untracked-files=no:
+ D .claude/skills/read-arxiv-paper/SKILL.md
+ M diagnostics/probe_drives.py
+ M diagnostics/smoke_rda.py
+ M nanochat/loss_eval.py
+ M nanochat/rda.py
+ M research/CURRENT_STATE.md
+ M "research/RDA and Persistent State.md"
+ M scripts/base_train.py
+Python:
+Python 3.10.21
+Torch/CUDA:
+torch 2.9.1+cu128
+torch.version.cuda 12.8
+cuda available True
+GPU driver and full nvidia-smi:
+Sun Oct 11 08:23:32 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 610.88                 KMD Version: 610.88        CUDA UMD Version: 13.3     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5060 Ti   WDDM  |   00000000:01:00.0  On |                  N/A |
+|  0%   45C    P3             22W /  180W |    1293MiB /   8151MiB |     11%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            1856    C+G   ...ms\Microsoft VS Code\Code.exe      N/A      |
+|    0   N/A  N/A            5288    C+G   ...1g1gvanyjgm\WhatsApp.Root.exe      N/A      |
+|    0   N/A  N/A            5664    C+G   ...Chrome\Application\chrome.exe      N/A      |
+|    0   N/A  N/A            6016    C+G   ...8bbwe\PhoneExperienceHost.exe      N/A      |
+|    0   N/A  N/A            6024    C+G   ...5.74\Signal-x64\SignalRgb.exe      N/A      |
+|    0   N/A  N/A            7308    C+G   ..._pzs8sxrjxfjjc\app\claude.exe      N/A      |
+|    0   N/A  N/A           10132    C+G   C:\Windows\explorer.exe               N/A      |
+|    0   N/A  N/A           10280    C+G   ...indows\System32\ShellHost.exe      N/A      |
+|    0   N/A  N/A           10408    C+G   ...2txyewy\CrossDeviceResume.exe      N/A      |
+|    0   N/A  N/A           10740    C+G   ...IA App\CEF\NVIDIA Overlay.exe      N/A      |
+|    0   N/A  N/A           10908    C+G   ..._cw5n1h2txyewy\SearchHost.exe      N/A      |
+|    0   N/A  N/A           11004    C+G   ...y\StartMenuExperienceHost.exe      N/A      |
+|    0   N/A  N/A           11432    C+G   ...t\Edge\Application\msedge.exe      N/A      |
+|    0   N/A  N/A           12756    C+G   ..._pzs8sxrjxfjjc\app\claude.exe      N/A      |
+|    0   N/A  N/A           12848    C+G   ...n\NvContainer\nvcontainer.exe      N/A      |
+|    0   N/A  N/A           13248    C+G   ...xyewy\ShellExperienceHost.exe      N/A      |
+|    0   N/A  N/A           14260    C+G   ....0.4258.62\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           15820    C+G   ...IA App\CEF\NVIDIA Overlay.exe      N/A      |
+|    0   N/A  N/A           17248    C+G   ...26wp6bftszj\TranslucentTB.exe      N/A      |
+|    0   N/A  N/A           18712    C+G   ...5n1h2txyewy\TextInputHost.exe      N/A      |
+|    0   N/A  N/A           20116    C+G   ...xyewy\AccountsControlHost.exe      N/A      |
+|    0   N/A  N/A           20972    C+G   ...kyb3d8bbwe\EdgeGameAssist.exe      N/A      |
+|    0   N/A  N/A           24276    C+G   ....0.4258.62\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           27148    C+G   ...Chrome\Application\chrome.exe      N/A      |
+|    0   N/A  N/A           31328    C+G   ...a\Roaming\Spotify\Spotify.exe      N/A      |
++-----------------------------------------------------------------------------------------+

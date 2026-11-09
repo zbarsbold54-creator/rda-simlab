@@ -1,0 +1,28 @@
+flowchart LR
+    TOK["Token Sequence"] --> TRUNK["Transformer Trunk"]
+    TRUNK --> HID["Hidden States"]
+
+    subgraph RDA["Regulatory Drive State"]
+        direction TB
+        HID --> EVD["Event Drive"]
+        LOG --> PED["PE Drive"]
+        PED --> GATE{{"Gated Update"}}
+        EVD --> GATE
+        ET_PRE["E_t (pre-update)"] --> GATE
+        GATE --> ET_POST["E_t+1 (post-update)"]
+        ET_POST --> FILM{{"FiLM Modulation"}}
+        HID --> FILM
+    end
+
+    ET_PRE --> PRED["State Predictor"]
+    HID --> PRED
+    PRED --> PNX["Predicted Next State"]
+    PNX --> CMP{{"Compare"}}
+    ET_POST --> CMP
+    CMP --> DPE["Drive Prediction Error"]
+
+    FILM --> LMH["LM Head"]
+    LMH --> LOG["Next-token Logits"]
+
+    classDef unconsumed fill:#D9D9D9,stroke:#B3B3B3;
+    class PRED,PNX,CMP,DPE unconsumed;

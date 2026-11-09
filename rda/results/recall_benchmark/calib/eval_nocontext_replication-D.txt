@@ -1,0 +1,64 @@
+ROW_VALUE_COLLISION rows=16384 equal=1074 percent=6.555176
+NO_CONTEXT delay=16 class=SALIENT accuracy=0.058105 ci95=[0.048340,0.068359] permutation_null=0.062988 permutation_ci95=[0.052246,0.073242] pvalue=0.756200 flag=WITHIN_NULL_CI
+ACCURACY delay=16 class=SALIENT n=2048 accuracy=0.999023 ci95=[0.997559,1.000000] permutation_null=0.074707 permutation_ci95=[0.063477,0.086426] full_vocab_accuracy=0.999023
+NO_CONTEXT delay=16 class=ORDINARY accuracy=0.061523 ci95=[0.051270,0.072266] permutation_null=0.061035 permutation_ci95=[0.051270,0.071777] pvalue=0.489400 flag=WITHIN_NULL_CI
+ACCURACY delay=16 class=ORDINARY n=2048 accuracy=0.998535 ci95=[0.996582,1.000000] permutation_null=0.060059 permutation_ci95=[0.050293,0.070312] full_vocab_accuracy=0.998535
+PAIRED delay=16 salient_minus_ordinary=0.000488 ci95=[-0.001465,0.002441]
+NO_CONTEXT delay=48 class=SALIENT accuracy=0.066895 ci95=[0.056641,0.078125] permutation_null=0.066406 permutation_ci95=[0.055664,0.077637] pvalue=0.490600 flag=WITHIN_NULL_CI
+ACCURACY delay=48 class=SALIENT n=2048 accuracy=0.999512 ci95=[0.998535,1.000000] permutation_null=0.045898 permutation_ci95=[0.037109,0.055176] full_vocab_accuracy=0.999512
+NO_CONTEXT delay=48 class=ORDINARY accuracy=0.064453 ci95=[0.054199,0.075195] permutation_null=0.058594 permutation_ci95=[0.048828,0.068848] pvalue=0.230600 flag=WITHIN_NULL_CI
+ACCURACY delay=48 class=ORDINARY n=2048 accuracy=0.997559 ci95=[0.995117,0.999512] permutation_null=0.065430 permutation_ci95=[0.055164,0.076172] full_vocab_accuracy=0.997559
+PAIRED delay=48 salient_minus_ordinary=0.001953 ci95=[0.000000,0.004395]
+NO_CONTEXT delay=192 class=SALIENT accuracy=0.061035 ci95=[0.050781,0.071777] permutation_null=0.060547 permutation_ci95=[0.050781,0.071289] pvalue=0.490800 flag=WITHIN_NULL_CI
+ACCURACY delay=192 class=SALIENT n=2048 accuracy=0.063477 ci95=[0.053223,0.074219] permutation_null=0.063477 permutation_ci95=[0.053223,0.074707] full_vocab_accuracy=0.063477
+NO_CONTEXT delay=192 class=ORDINARY accuracy=0.065918 ci95=[0.055176,0.077148] permutation_null=0.059570 permutation_ci95=[0.049805,0.069824] pvalue=0.216000 flag=WITHIN_NULL_CI
+ACCURACY delay=192 class=ORDINARY n=2048 accuracy=0.062012 ci95=[0.051758,0.072754] permutation_null=0.062012 permutation_ci95=[0.051758,0.073242] full_vocab_accuracy=0.062012
+PAIRED delay=192 salient_minus_ordinary=0.001465 ci95=[-0.013184,0.016602]
+NO_CONTEXT delay=320 class=SALIENT accuracy=0.068359 ci95=[0.057617,0.079590] permutation_null=0.063477 permutation_ci95=[0.053223,0.074219] pvalue=0.275800 flag=WITHIN_NULL_CI
+ACCURACY delay=320 class=SALIENT n=2048 accuracy=0.062500 ci95=[0.052234,0.073242] permutation_null=0.062012 permutation_ci95=[0.051758,0.072754] full_vocab_accuracy=0.062500
+NO_CONTEXT delay=320 class=ORDINARY accuracy=0.063477 ci95=[0.053711,0.074707] permutation_null=0.059082 permutation_ci95=[0.049304,0.069336] pvalue=0.284800 flag=WITHIN_NULL_CI
+ACCURACY delay=320 class=ORDINARY n=2048 accuracy=0.062988 ci95=[0.052734,0.073242] permutation_null=0.061523 permutation_ci95=[0.051270,0.072266] full_vocab_accuracy=0.062988
+PAIRED delay=320 salient_minus_ordinary=-0.000488 ci95=[-0.015137,0.013684]
+NO_CONTEXT delay=448 class=SALIENT accuracy=0.063965 ci95=[0.053223,0.074707] permutation_null=0.063965 permutation_ci95=[0.053711,0.075195] pvalue=0.517600 flag=WITHIN_NULL_CI
+ACCURACY delay=448 class=SALIENT n=2048 accuracy=0.061035 ci95=[0.050293,0.071777] permutation_null=0.062012 permutation_ci95=[0.051270,0.072754] full_vocab_accuracy=0.061035
+NO_CONTEXT delay=448 class=ORDINARY accuracy=0.063477 ci95=[0.053223,0.074219] permutation_null=0.065918 permutation_ci95=[0.055176,0.076660] pvalue=0.644000 flag=WITHIN_NULL_CI
+ACCURACY delay=448 class=ORDINARY n=2048 accuracy=0.063965 ci95=[0.053223,0.075195] permutation_null=0.061523 permutation_ci95=[0.051758,0.072266] full_vocab_accuracy=0.063965
+PAIRED delay=448 salient_minus_ordinary=-0.002930 ci95=[-0.017090,0.011719]
+NO_CONTEXT delay=576 class=SALIENT accuracy=0.063477 ci95=[0.053223,0.074219] permutation_null=0.063965 permutation_ci95=[0.053711,0.074719] pvalue=0.546000 flag=WITHIN_NULL_CI
+ACCURACY delay=576 class=SALIENT n=2048 accuracy=0.063477 ci95=[0.052734,0.074219] permutation_null=0.062500 permutation_ci95=[0.052246,0.072754] full_vocab_accuracy=0.063477
+NO_CONTEXT delay=576 class=ORDINARY accuracy=0.064453 ci95=[0.054187,0.075195] permutation_null=0.056641 permutation_ci95=[0.046875,0.066895] pvalue=0.149800 flag=WITHIN_NULL_CI
+ACCURACY delay=576 class=ORDINARY n=2048 accuracy=0.062988 ci95=[0.052734,0.073730] permutation_null=0.062012 permutation_ci95=[0.052246,0.072754] full_vocab_accuracy=0.062988
+PAIRED delay=576 salient_minus_ordinary=0.000488 ci95=[-0.014648,0.015625]
+NO_CONTEXT delay=704 class=SALIENT accuracy=0.060547 ci95=[0.050781,0.070801] permutation_null=0.058594 permutation_ci95=[0.048340,0.068848] pvalue=0.405600 flag=WITHIN_NULL_CI
+ACCURACY delay=704 class=SALIENT n=2048 accuracy=0.062988 ci95=[0.052734,0.073254] permutation_null=0.062500 permutation_ci95=[0.051758,0.073242] full_vocab_accuracy=0.062988
+NO_CONTEXT delay=704 class=ORDINARY accuracy=0.060547 ci95=[0.050769,0.071289] permutation_null=0.060547 permutation_ci95=[0.050293,0.071289] pvalue=0.519800 flag=WITHIN_NULL_CI
+ACCURACY delay=704 class=ORDINARY n=2048 accuracy=0.062500 ci95=[0.052734,0.072754] permutation_null=0.062012 permutation_ci95=[0.051758,0.072266] full_vocab_accuracy=0.062500
+PAIRED delay=704 salient_minus_ordinary=0.000488 ci95=[-0.014160,0.015137]
+NO_CONTEXT delay=832 class=SALIENT accuracy=0.062500 ci95=[0.051758,0.072754] permutation_null=0.059570 permutation_ci95=[0.049805,0.070312] pvalue=0.341600 flag=WITHIN_NULL_CI
+ACCURACY delay=832 class=SALIENT n=2048 accuracy=0.062012 ci95=[0.051758,0.072754] permutation_null=0.062500 permutation_ci95=[0.052246,0.072754] full_vocab_accuracy=0.062012
+NO_CONTEXT delay=832 class=ORDINARY accuracy=0.062988 ci95=[0.052246,0.073730] permutation_null=0.059570 permutation_ci95=[0.048828,0.069824] pvalue=0.339000 flag=WITHIN_NULL_CI
+ACCURACY delay=832 class=ORDINARY n=2048 accuracy=0.062012 ci95=[0.051758,0.072266] permutation_null=0.062500 permutation_ci95=[0.051758,0.073242] full_vocab_accuracy=0.062012
+PAIRED delay=832 salient_minus_ordinary=0.000000 ci95=[-0.014648,0.014648]
+HOLM delay=16 class=SALIENT pvalue=0.756200 holm_pvalue=1.000000 significant=NO
+HOLM delay=16 class=ORDINARY pvalue=0.489400 holm_pvalue=1.000000 significant=NO
+HOLM delay=48 class=SALIENT pvalue=0.490600 holm_pvalue=1.000000 significant=NO
+HOLM delay=48 class=ORDINARY pvalue=0.230600 holm_pvalue=1.000000 significant=NO
+HOLM delay=192 class=SALIENT pvalue=0.490800 holm_pvalue=1.000000 significant=NO
+HOLM delay=192 class=ORDINARY pvalue=0.216000 holm_pvalue=1.000000 significant=NO
+HOLM delay=320 class=SALIENT pvalue=0.275800 holm_pvalue=1.000000 significant=NO
+HOLM delay=320 class=ORDINARY pvalue=0.284800 holm_pvalue=1.000000 significant=NO
+HOLM delay=448 class=SALIENT pvalue=0.517600 holm_pvalue=1.000000 significant=NO
+HOLM delay=448 class=ORDINARY pvalue=0.644000 holm_pvalue=1.000000 significant=NO
+HOLM delay=576 class=SALIENT pvalue=0.546000 holm_pvalue=1.000000 significant=NO
+HOLM delay=576 class=ORDINARY pvalue=0.149800 holm_pvalue=1.000000 significant=NO
+HOLM delay=704 class=SALIENT pvalue=0.405600 holm_pvalue=1.000000 significant=NO
+HOLM delay=704 class=ORDINARY pvalue=0.519800 holm_pvalue=1.000000 significant=NO
+HOLM delay=832 class=SALIENT pvalue=0.341600 holm_pvalue=1.000000 significant=NO
+HOLM delay=832 class=ORDINARY pvalue=0.339000 holm_pvalue=1.000000 significant=NO
+NO_CONTEXT_POOLED accuracy=0.063232 ci95=[0.060608,0.065887] permutation_null=0.061279 permutation_ci95=[0.058746,0.063873] pvalue=0.154200 flag=WITHIN_NULL_CI
+CROSS_POOLED accuracy=0.062663 ci95=[0.059774,0.065716] permutation_null=0.062215 permutation_ci95=[0.059245,0.065308]
+CROSS_MATCH class=SALIENT same_row_other_event=0.063802 permuted_other_row=0.062500
+CROSS_MATCH class=ORDINARY same_row_other_event=0.064046 permuted_other_row=0.061930
+CROSS_MATCH pooled same_row_other_event=0.063924 permuted_other_row=0.062215
+EVAL_WALL_SECONDS=1273.515
+RESULT_JSON={"16": {"SALIENT": 0.9990234375, "ORDINARY": 0.99853515625, "SALIENT_no_context": 0.05810546875, "ORDINARY_no_context": 0.0615234375, "SALIENT_permutation_null": 0.07470703125, "ORDINARY_permutation_null": 0.06005859375, "SALIENT_full_vocab": 0.9990234375, "ORDINARY_full_vocab": 0.99853515625, "paired_difference": 0.00048828125}, "48": {"SALIENT": 0.99951171875, "ORDINARY": 0.99755859375, "SALIENT_no_context": 0.06689453125, "ORDINARY_no_context": 0.064453125, "SALIENT_permutation_null": 0.0458984375, "ORDINARY_permutation_null": 0.0654296875, "SALIENT_full_vocab": 0.99951171875, "ORDINARY_full_vocab": 0.99755859375, "paired_difference": 0.001953125}, "192": {"SALIENT": 0.0634765625, "ORDINARY": 0.06201171875, "SALIENT_no_context": 0.06103515625, "ORDINARY_no_context": 0.06591796875, "SALIENT_permutation_null": 0.0634765625, "ORDINARY_permutation_null": 0.06201171875, "SALIENT_full_vocab": 0.0634765625, "ORDINARY_full_vocab": 0.06201171875, "paired_difference": 0.00146484375}, "320": {"SALIENT": 0.0625, "ORDINARY": 0.06298828125, "SALIENT_no_context": 0.068359375, "ORDINARY_no_context": 0.0634765625, "SALIENT_permutation_null": 0.06201171875, "ORDINARY_permutation_null": 0.0615234375, "SALIENT_full_vocab": 0.0625, "ORDINARY_full_vocab": 0.06298828125, "paired_difference": -0.00048828125}, "448": {"SALIENT": 0.06103515625, "ORDINARY": 0.06396484375, "SALIENT_no_context": 0.06396484375, "ORDINARY_no_context": 0.0634765625, "SALIENT_permutation_null": 0.06201171875, "ORDINARY_permutation_null": 0.0615234375, "SALIENT_full_vocab": 0.06103515625, "ORDINARY_full_vocab": 0.06396484375, "paired_difference": -0.0029296875}, "576": {"SALIENT": 0.0634765625, "ORDINARY": 0.06298828125, "SALIENT_no_context": 0.0634765625, "ORDINARY_no_context": 0.064453125, "SALIENT_permutation_null": 0.0625, "ORDINARY_permutation_null": 0.06201171875, "SALIENT_full_vocab": 0.0634765625, "ORDINARY_full_vocab": 0.06298828125, "paired_difference": 0.00048828125}, "704": {"SALIENT": 0.06298828125, "ORDINARY": 0.0625, "SALIENT_no_context": 0.060546875, "ORDINARY_no_context": 0.060546875, "SALIENT_permutation_null": 0.0625, "ORDINARY_permutation_null": 0.06201171875, "SALIENT_full_vocab": 0.06298828125, "ORDINARY_full_vocab": 0.0625, "paired_difference": 0.00048828125}, "832": {"SALIENT": 0.06201171875, "ORDINARY": 0.06201171875, "SALIENT_no_context": 0.0625, "ORDINARY_no_context": 0.06298828125, "SALIENT_permutation_null": 0.0625, "ORDINARY_permutation_null": 0.0625, "SALIENT_full_vocab": 0.06201171875, "ORDINARY_full_vocab": 0.06201171875, "paired_difference": 0.0}}

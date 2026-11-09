@@ -1,0 +1,47 @@
+﻿{
+    "label":  "multiscale_decay_dbs2",
+    "written_utc":  "2026-10-11T01:26:31Z",
+    "head":  "5bb8933637685e4cae231539c33038b8eb4e2eaf",
+    "metric_line":  "Step 00600 | Validation bpb: \u003cx\u003e   (scripts/base_train.py:740)",
+    "base_flags":  [
+                       "--depth=8",
+                       "--aspect-ratio=96",
+                       "--head-dim=128",
+                       "--max-seq-len=1024",
+                       "--window-pattern=L",
+                       "--device-batch-size=2",
+                       "--total-batch-size=32768",
+                       "--num-iterations=600",
+                       "--eval-every=50",
+                       "--eval-tokens=524288",
+                       "--core-metric-every=-1",
+                       "--sample-every=-1"
+                   ],
+    "arms":  {
+                 "D":  "--rda --rda-decays 0.9,0.95,0.975,0.9875,0.99375,0.996875,0.9984375,0.99921875",
+                 "D_const":  "--rda --rda-const-state --rda-decays 0.9,0.95,0.975,0.9875,0.99375,0.996875,0.9984375,0.99921875"
+             },
+    "runs":  {
+                 "D":  {
+                           "arm":  "D",
+                           "seed":  43,
+                           "tag":  "ab-v3-D-s43-dbs2-decay",
+                           "bpb_final":  1.275386,
+                           "wall_minutes":  23.31,
+                           "train_minutes":  19.83,
+                           "log":  "results\\multiscale_decay\\D.txt"
+                       },
+                 "D_const":  {
+                                 "arm":  "D_const",
+                                 "seed":  43,
+                                 "tag":  "ab-v3-D_const-s43-dbs2-decay",
+                                 "bpb_final":  1.274947,
+                                 "wall_minutes":  20.59,
+                                 "train_minutes":  17.14,
+                                 "log":  "results\\multiscale_decay\\D_const.txt"
+                             }
+             },
+    "halted":  null,
+    "timeout_seconds_per_run":  5400,
+    "timeout_label":  "TIMEOUT after 90 min"
+}

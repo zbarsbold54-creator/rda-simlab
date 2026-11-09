@@ -1,0 +1,92 @@
+{
+  "label": "a-s42-post",
+  "written_utc": "2026-09-28T10:06:18Z",
+  "argv": [
+    "diagnostics\\write_manifest.py",
+    "--label",
+    "a-s42-post",
+    "--seed",
+    "42"
+  ],
+  "argv_full_command_line": "diagnostics\\write_manifest.py --label a-s42-post --seed 42",
+  "cwd": "C:\\AI\\nanochat",
+  "python": "3.10.21 (main, Sep  1 2026, 14:14:55) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "seed": 42,
+  "rda": false,
+  "train_config": {
+    "num_iterations": 600,
+    "device_batch_size": 4,
+    "total_batch_size": 32768
+  },
+  "git_commit": "6ee7cf67b26bd5833059ce4c1e0a18acb0f220a5",
+  "git_branch": "master",
+  "git_clean": false,
+  "git_diff_sha256": "9f4a00bc8415851ca1cfdcfb49cd8ea3bbb5e6edfacf598a5235ff7feb5d90a6",
+  "git_status_porcelain": "M nanochat/common.py\n M nanochat/rda.py\n M scripts/base_train.py\n?? diagnostics/verify_t1024.py\n?? diagnostics/verify_vectorized_update.py\n?? diagnostics/write_manifest.py\n?? manifests/\n?? run_sweep.ps1",
+  "git_diff_stat": "nanochat/common.py    |  19 +++-\n nanochat/rda.py       | 280 +++++++++++++++++++++++++++++++++++++++++++++++---\n scripts/base_train.py |  60 ++++++++++-\n 3 files changed, 339 insertions(+), 20 deletions(-)",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "note": "",
+  "data": {
+    "dataset": "fineweb-edu",
+    "data_dir": "C:\\Users\\HiTech\\.cache\\nanochat\\base_data_fineweb_edu",
+    "max_shard": 997,
+    "shards": [
+      {
+        "file": "shard_00000.parquet",
+        "bytes": 94511680,
+        "edge_sha256": "8929c9535cbacbff"
+      },
+      {
+        "file": "shard_00001.parquet",
+        "bytes": 94233382,
+        "edge_sha256": "019a81113eeb80d3"
+      },
+      {
+        "file": "shard_00002.parquet",
+        "bytes": 93549094,
+        "edge_sha256": "a877a66597308e3f"
+      },
+      {
+        "file": "shard_00003.parquet",
+        "bytes": 93774109,
+        "edge_sha256": "73f01a9d51c38301"
+      },
+      {
+        "file": "shard_00004.parquet",
+        "bytes": 94940492,
+        "edge_sha256": "0b0c91c64a5a10ef"
+      },
+      {
+        "file": "shard_00005.parquet",
+        "bytes": 93623778,
+        "edge_sha256": "45fcfea9b6d5bc4a"
+      },
+      {
+        "file": "shard_00006.parquet",
+        "bytes": 93479271,
+        "edge_sha256": "aeb651873aeb1755"
+      },
+      {
+        "file": "shard_00007.parquet",
+        "bytes": 93672088,
+        "edge_sha256": "2a5ed56bf35a3d3e"
+      },
+      {
+        "file": "shard_00008.parquet",
+        "bytes": 93282496,
+        "edge_sha256": "cd3e079f3fb82f43"
+      },
+      {
+        "file": "shard_00009.parquet",
+        "bytes": 93695499,
+        "edge_sha256": "d7e732c8a9736a7a"
+      },
+      {
+        "file": "shard_00997.parquet",
+        "bytes": 93877134,
+        "edge_sha256": "f3a844d049e8a4c6"
+      }
+    ]
+  }
+}

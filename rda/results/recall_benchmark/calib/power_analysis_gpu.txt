@@ -1,0 +1,14 @@
+POWER_GPU base_accuracy=0.0638020833333333 simulations=2000 bootstrap_reps=5000 seed=20261011
+POWER N=2048 delta=0.03 seeds=1 power=0.9500
+POWER N=4096 delta=0.03 seeds=1 power=0.9990
+POWER N=8192 delta=0.05 seeds=1 power=1.0000
+POWER_GPU base_accuracy=0.0638020833333333 simulations=2000 bootstrap_reps=5000 seed=20261011
+POWER N=8192 delta=0.05 seeds=3 power=1.0000
+POWER N=8192 delta=0.08 seeds=1 power=1.0000
+POWER N=8192 delta=0.08 seeds=3 power=1.0000
+POWER N=16384 delta=0.03 seeds=1 power=1.0000
+POWER N=16384 delta=0.03 seeds=3 power=1.0000
+POWER N=16384 delta=0.05 seeds=1 power=1.0000
+POWER N=16384 delta=0.05 seeds=3 power=1.0000
+POWER N=16384 delta=0.08 seeds=1 power=1.0000
+POWER N=16384 delta=0.08 seeds=3 power=1.0000

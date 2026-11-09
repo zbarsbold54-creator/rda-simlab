@@ -1,0 +1,26 @@
+{
+  "tag": "model-b-primal",
+  "step": 600,
+  "n_tokens": 1024,
+  "dims": [
+    "novelty",
+    "uncertainty",
+    "threat",
+    "integrity",
+    "agency",
+    "learning_progress",
+    "arousal",
+    "homeostatic_dev"
+  ],
+  "state": [
+    -0.6527786254882812,
+    0.7761048078536987,
+    -0.9834418296813965,
+    0.9620969891548157,
+    0.9432967901229858,
+    0.9276163578033447,
+    0.7617355585098267,
+    -0.9497107863426208
+  ],
+  "text_sha256": "77bcafe5b892444bd5c917421296c338cd0c78902fe9d75236c9a374811eaf1b"
+}

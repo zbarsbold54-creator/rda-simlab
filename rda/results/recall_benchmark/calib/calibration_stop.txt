@@ -1,0 +1,13 @@
+Pre-registered calibration rule: A must reach at least 0.80 accuracy in both delay-16 classes; after weight 5 fails, retry weight 20 once; if still below, stop.
+
+recall-A-s43-w5: 1200 iterations; final FineWeb val BPB 1.334573; delay-16 SALIENT 0.250000, ORDINARY 0.250000; FAIL.
+recall-A-s43-w20: 1200 iterations; final FineWeb val BPB 1.333574; delay-16 SALIENT 0.250000, ORDINARY 0.250000; FAIL. Required stop applied before D/D_const training.
+
+Training commands were launched by:
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run_recall_calib.ps1 -Arm A -AnswerWeight 5 -ModelTag recall-A-s43-w5
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run_recall_calib.ps1 -Arm A -AnswerWeight 20 -ModelTag recall-A-s43-w20
+
+Each 2048-row eval used diagnostics.eval_recall with step 1200, device batch size 2, seed 43, and --allow-cross-above-0.09.
+Optimizer files deleted after each run's evaluation: 931443093 bytes each; 1862886186 bytes total. No other checkpoint files were deleted.
+
+Part 4 capacity training, Part 5 manipulation evaluation, and Part 6 power analysis were not run because the preregistered calibration stop condition was met.

@@ -1,0 +1,93 @@
+﻿{
+    "label":  "ab_v3_dbs2",
+    "written_utc":  "2026-10-10T13:38:32Z",
+    "head":  "5566d90bc39ad71b06be535ff33a919e1606498f",
+    "metric_line":  "Step 00600 | Validation bpb: \u003cx\u003e   (scripts/base_train.py:740)",
+    "base_flags":  [
+                       "--depth=8",
+                       "--aspect-ratio=96",
+                       "--head-dim=128",
+                       "--max-seq-len=1024",
+                       "--window-pattern=L",
+                       "--device-batch-size=2",
+                       "--total-batch-size=32768",
+                       "--num-iterations=600",
+                       "--eval-every=50",
+                       "--eval-tokens=524288",
+                       "--core-metric-every=-1",
+                       "--sample-every=-1"
+                   ],
+    "arms":  {
+                 "baseline_ref":  "from ab_v2 at commit f272938",
+                 "Bprime_ref":  "from ab_v2 at commit f272938",
+                 "C":  "--rda --rda-const-state"
+             },
+    "runs":  {
+                 "A_s42_dbs2_full":  {
+                                         "arm":  "A",
+                                         "seed":  42,
+                                         "tag":  "ab-v3-A-s42-dbs2-full",
+                                         "bpb_final":  1.30068,
+                                         "wall_minutes":  14.41,
+                                         "train_minutes":  12.5,
+                                         "log":  "logs\\ab_v3_dbs2_full_A_s42_dbs2_full_s42.txt"
+                                     },
+                 "A_s43_dbs2_full":  {
+                                         "arm":  "A",
+                                         "seed":  43,
+                                         "tag":  "ab-v3-A-s43-dbs2-full",
+                                         "bpb_final":  1.287114,
+                                         "wall_minutes":  14.45,
+                                         "train_minutes":  12.53,
+                                         "log":  "logs\\ab_v3_dbs2_full_A_s43_dbs2_full_s43.txt"
+                                     },
+                 "Bprime_s43_dbs2_full":  {
+                                              "arm":  "Bprime",
+                                              "seed":  43,
+                                              "tag":  "ab-v3-Bprime-s43-dbs2-full",
+                                              "bpb_final":  1.275198,
+                                              "wall_minutes":  23,
+                                              "train_minutes":  19.57,
+                                              "log":  "logs\\ab_v3_dbs2_full_Bprime_s43_dbs2_full_s43.txt"
+                                          },
+                 "C_s43_dbs2_full":  {
+                                         "arm":  "C",
+                                         "seed":  43,
+                                         "tag":  "ab-v3-C-s43-dbs2-full",
+                                         "bpb_final":  1.27495,
+                                         "wall_minutes":  20.33,
+                                         "train_minutes":  16.93,
+                                         "log":  "logs\\ab_v3_dbs2_full_C_s43_dbs2_full_s43.txt"
+                                     },
+                 "A_s44_dbs2_full":  {
+                                         "arm":  "A",
+                                         "seed":  44,
+                                         "tag":  "ab-v3-A-s44-dbs2-full",
+                                         "bpb_final":  1.29359,
+                                         "wall_minutes":  14.36,
+                                         "train_minutes":  12.45,
+                                         "log":  "logs\\ab_v3_dbs2_full_A_s44_dbs2_full_s44.txt"
+                                     },
+                 "Bprime_s44_dbs2_full":  {
+                                              "arm":  "Bprime",
+                                              "seed":  44,
+                                              "tag":  "ab-v3-Bprime-s44-dbs2-full",
+                                              "bpb_final":  1.275858,
+                                              "wall_minutes":  23.06,
+                                              "train_minutes":  19.61,
+                                              "log":  "logs\\ab_v3_dbs2_full_Bprime_s44_dbs2_full_s44.txt"
+                                          },
+                 "C_s44_dbs2_full":  {
+                                         "arm":  "C",
+                                         "seed":  44,
+                                         "tag":  "ab-v3-C-s44-dbs2-full",
+                                         "bpb_final":  1.274079,
+                                         "wall_minutes":  20.44,
+                                         "train_minutes":  17.04,
+                                         "log":  "logs\\ab_v3_dbs2_full_C_s44_dbs2_full_s44.txt"
+                                     }
+             },
+    "halted":  null,
+    "timeout_seconds_per_run":  5400,
+    "timeout_label":  "TIMEOUT after 90 min"
+}

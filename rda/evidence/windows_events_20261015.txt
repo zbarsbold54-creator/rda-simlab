@@ -1,0 +1,48 @@
+﻿TimeCreated=2026-10-15T01:59:08.8180450+08:00 | Id=109 | Provider=Microsoft-Windows-Kernel-Power | RecordId=301282
+Message=The kernel power manager has initiated a shutdown transition. Action: Power Action Shutdown Event Code: 0x0 Reason: Kernel API
+
+TimeCreated=2026-10-15T05:56:54.9761903+08:00 | Id=6005 | Provider=EventLog | RecordId=301273
+Message=The Event log service was started.
+
+TimeCreated=2026-10-15T01:59:03.8415499+08:00 | Id=6006 | Provider=EventLog | RecordId=301260
+Message=The Event log service was stopped.
+
+TimeCreated=2026-10-15T01:59:03.0358642+08:00 | Id=1074 | Provider=User32 | RecordId=301259
+Message=The process C:\WINDOWS\system32\winlogon.exe (BIMO) has initiated the shutdown of computer BIMO on behalf of user NT AUTHORITY\SYSTEM for the following reason: No title for this reason could be found Reason Code: 0x500ff Shutdown Type: shutdown Comment: 
+
+TimeCreated=2026-10-15T01:58:14.8434541+08:00 | Id=109 | Provider=Microsoft-Windows-Kernel-Power | RecordId=301118
+Message=The kernel power manager has initiated a shutdown transition. Action: Power Action Reboot Event Code: 0x0 Reason: Kernel API
+
+TimeCreated=2026-10-15T01:58:46.6176133+08:00 | Id=6005 | Provider=EventLog | RecordId=301111
+Message=The Event log service was started.
+
+TimeCreated=2026-10-15T01:58:09.8779906+08:00 | Id=6006 | Provider=EventLog | RecordId=301103
+Message=The Event log service was stopped.
+
+TimeCreated=2026-10-15T01:58:08.2191812+08:00 | Id=1074 | Provider=User32 | RecordId=301101
+Message=The process C:\WINDOWS\servicing\TrustedInstaller.exe (BIMO) has initiated the restart of computer BIMO on behalf of user NT AUTHORITY\SYSTEM for the following reason: Operating System: Upgrade (Planned) Reason Code: 0x80020003 Shutdown Type: restart Comment: 
+
+TimeCreated=2026-10-15T01:57:34.4177281+08:00 | Id=109 | Provider=Microsoft-Windows-Kernel-Power | RecordId=300995
+Message=The kernel power manager has initiated a shutdown transition. Action: Power Action Reboot Event Code: 0x0 Reason: Kernel API
+
+TimeCreated=2026-10-15T01:58:05.6870654+08:00 | Id=6005 | Provider=EventLog | RecordId=300989
+Message=The Event log service was started.
+
+TimeCreated=2026-10-15T01:57:29.4438159+08:00 | Id=6006 | Provider=EventLog | RecordId=300973
+Message=The Event log service was stopped.
+
+TimeCreated=2026-10-15T01:57:28.2979816+08:00 | Id=1074 | Provider=User32 | RecordId=300972
+Message=The process C:\WINDOWS\servicing\TrustedInstaller.exe (BIMO) has initiated the restart of computer BIMO on behalf of user NT AUTHORITY\SYSTEM for the following reason: Operating System: Upgrade (Planned) Reason Code: 0x80020003 Shutdown Type: restart Comment: 
+
+TimeCreated=2026-10-15T01:56:24.0573131+08:00 | Id=109 | Provider=Microsoft-Windows-Kernel-Power | RecordId=300793
+Message=The kernel power manager has initiated a shutdown transition. Action: Power Action Reboot Event Code: 0x0 Reason: Kernel API
+
+TimeCreated=2026-10-15T01:57:01.9735937+08:00 | Id=6005 | Provider=EventLog | RecordId=300787
+Message=The Event log service was started.
+
+TimeCreated=2026-10-15T01:56:19.0890884+08:00 | Id=6006 | Provider=EventLog | RecordId=300772
+Message=The Event log service was stopped.
+
+TimeCreated=2026-10-15T01:54:58.2147061+08:00 | Id=1074 | Provider=User32 | RecordId=300759
+Message=The process C:\WINDOWS\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\StartMenuExperienceHost.exe (BIMO) has initiated the restart of computer BIMO on behalf of user BIMO\HiTech for the following reason: Other (Unplanned) Reason Code: 0x0 Shutdown Type: restart Comment: 
+

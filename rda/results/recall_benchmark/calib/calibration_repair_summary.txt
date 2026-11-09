@@ -1,0 +1,73 @@
+Recall generator repair and calibration
+Date: 2026-10-11
+Branch: exp/recall-benchmark-20261011
+Spec amendment commit: 717c3d7c9d107d47c6680fa79218f25a378042af
+Code commit: a138fd2dea775c175b9711011d1e8d5f2bed9548
+
+Generator audit:
+2048 eval rows / 4096 events; all assertions passed. See generator_audit.txt
+for MI permutation-null intervals, full class/delay marginal counts, pair
+variation, and train/eval stream disjointness.
+
+Evaluation command for each successful arm:
+.\.venv\Scripts\python.exe -m diagnostics.eval_recall --checkpoint-dir
+C:\Users\HiTech\.cache\nanochat\base_checkpoints\<TAG> --step 1200
+--device-batch-size 2 --n-rows 2048 --seed 43
+
+16-way accuracy by delay (SALIENT / ORDINARY):
+delay   weight-5       weight-20
+16      0.062500/0.062500  0.996094/1.000000
+48      0.062500/0.062500  1.000000/1.000000
+192     0.062500/0.062500  0.070312/0.078125
+320     0.062500/0.062500  0.066406/0.070312
+448     0.062500/0.062500  0.066406/0.062500
+576     0.062500/0.062500  0.062500/0.078125
+704     0.062500/0.062500  0.070312/0.058594
+832     0.062500/0.062500  0.066406/0.042969
+
+No-context accuracy by delay (SALIENT / ORDINARY); every cell's point
+estimate was within its fixed-seed permutation-null 95% CI:
+delay   weight-5       weight-20
+16      0.058594/0.066406  0.062500/0.062500
+48      0.058594/0.062500  0.062500/0.054688
+192     0.066406/0.050781  0.070312/0.058594
+320     0.058594/0.062500  0.066406/0.058594
+448     0.066406/0.062500  0.062500/0.066406
+576     0.058594/0.066406  0.062500/0.054688
+704     0.066406/0.062500  0.062500/0.062500
+832     0.062500/0.066406  0.062500/0.058594
+
+CROSS pooled result:
+weight-5 accuracy=0.062500 CI95=[0.054362,0.070964];
+permutation_null=0.062500 CI95=[0.054036,0.070964].
+weight-20 accuracy=0.066081 CI95=[0.057617,0.074870];
+permutation_null=0.060872 CI95=[0.052734,0.069336].
+The A CROSS stop rule (CI lower bound > 0.09 in any CROSS class/bucket)
+did not fire.
+
+Answer-only training loss, full-vocabulary token NLL, vs ln(16)=2.772589.
+The complete curves are in the training logs at steps 0, 50, ..., 1150.
+step     weight-5 SALIENT/ORDINARY    weight-20 SALIENT/ORDINARY
+0        10.396602/10.389545          10.396602/10.389545
+300      2.775090/2.668900            2.100392/1.821446
+600      2.757489/2.776770            1.710026/1.895721
+900      2.759811/2.795951            1.913608/2.454872
+1150     2.776587/2.769908            1.397991/1.903025
+
+Final validation BPB:
+weight-5=1.325832; weight-20=1.325089.
+Delay-16 calibration gate: weight-5 FAIL (both classes below 0.80);
+weight-20 PASS (both classes at or above 0.80). Frozen calibration setting:
+answer weight 20. No D, D_const, or manipulation-check run was started.
+
+Training commands were launched through a fresh child PowerShell using
+run_recall_calib.ps1:
+-Arm A -AnswerWeight 5 -ModelTag recall-A-s43-w5-v3
+-Arm A -AnswerWeight 20 -ModelTag recall-A-s43-w20-v3
+Both used the script's common 1200-iteration calibration schedule.
+
+Anomaly: the first weight-5 attempt (tag recall-A-s43-w5-v2) saved a step-0
+checkpoint then stopped on an answer-mask shape error in logging. The class
+mask was flattened to match the model's per-token loss; retry v3 completed.
+The incomplete v2 artifacts were left untouched. Only optimizer files from
+the successfully evaluated v3 checkpoints were removed.

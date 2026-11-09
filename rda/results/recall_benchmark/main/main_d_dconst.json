@@ -1,0 +1,1331 @@
+{
+    "schema_version":  1,
+    "eval_seed_base":  3000000000,
+    "n_rows":  8192,
+    "entries":  [
+                    {
+                        "type":  "run",
+                        "run_id":  "D-43",
+                        "arm":  "D",
+                        "seed":  43,
+                        "checkpoint_step":  1200,
+                        "checkpoint_dir":  "C:\\Users\\HiTech\\.cache\\nanochat\\base_checkpoints\\recall-D-s43-w20",
+                        "eval_seed_base":  3000000000,
+                        "n_rows":  8192,
+                        "per_delay":  {
+                                          "16":  {
+                                                     "SALIENT":  0.99609375,
+                                                     "ORDINARY":  0.998046875,
+                                                     "SALIENT_no_context":  0.060546875,
+                                                     "ORDINARY_no_context":  0.0654296875,
+                                                     "SALIENT_permutation_null":  0.0615234375,
+                                                     "ORDINARY_permutation_null":  0.06640625,
+                                                     "SALIENT_full_vocab":  0.99609375,
+                                                     "ORDINARY_full_vocab":  0.998046875,
+                                                     "paired_difference":  -0.001953125
+                                                 },
+                                          "48":  {
+                                                     "SALIENT":  0.998046875,
+                                                     "ORDINARY":  0.9990234375,
+                                                     "SALIENT_no_context":  0.0654296875,
+                                                     "ORDINARY_no_context":  0.0576171875,
+                                                     "SALIENT_permutation_null":  0.0419921875,
+                                                     "ORDINARY_permutation_null":  0.0634765625,
+                                                     "SALIENT_full_vocab":  0.998046875,
+                                                     "ORDINARY_full_vocab":  0.9990234375,
+                                                     "paired_difference":  -0.0009765625
+                                                 },
+                                          "192":  {
+                                                      "SALIENT":  0.0634765625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0673828125,
+                                                      "ORDINARY_no_context":  0.0654296875,
+                                                      "SALIENT_permutation_null":  0.060546875,
+                                                      "ORDINARY_permutation_null":  0.060546875,
+                                                      "SALIENT_full_vocab":  0.0634765625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0009765625
+                                                  },
+                                          "320":  {
+                                                      "SALIENT":  0.0634765625,
+                                                      "ORDINARY":  0.0634765625,
+                                                      "SALIENT_no_context":  0.0654296875,
+                                                      "ORDINARY_no_context":  0.06640625,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0634765625,
+                                                      "ORDINARY_full_vocab":  0.0634765625,
+                                                      "paired_difference":  0.0
+                                                  },
+                                          "448":  {
+                                                      "SALIENT":  0.060546875,
+                                                      "ORDINARY":  0.0615234375,
+                                                      "SALIENT_no_context":  0.0546875,
+                                                      "ORDINARY_no_context":  0.0537109375,
+                                                      "SALIENT_permutation_null":  0.064453125,
+                                                      "ORDINARY_permutation_null":  0.0615234375,
+                                                      "SALIENT_full_vocab":  0.060546875,
+                                                      "ORDINARY_full_vocab":  0.0615234375,
+                                                      "paired_difference":  -0.0009765625
+                                                  },
+                                          "576":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0634765625,
+                                                      "SALIENT_no_context":  0.0615234375,
+                                                      "ORDINARY_no_context":  0.064453125,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0615234375,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0634765625,
+                                                      "paired_difference":  -0.0009765625
+                                                  },
+                                          "704":  {
+                                                      "SALIENT":  0.0615234375,
+                                                      "ORDINARY":  0.0615234375,
+                                                      "SALIENT_no_context":  0.0556640625,
+                                                      "ORDINARY_no_context":  0.0732421875,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0615234375,
+                                                      "ORDINARY_full_vocab":  0.0615234375,
+                                                      "paired_difference":  0.0
+                                                  },
+                                          "832":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0615234375,
+                                                      "SALIENT_no_context":  0.056640625,
+                                                      "ORDINARY_no_context":  0.056640625,
+                                                      "SALIENT_permutation_null":  0.0634765625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0615234375,
+                                                      "paired_difference":  0.0009765625
+                                                  }
+                                      },
+                        "cross_pooled":  {
+                                             "salient_accuracy":  0.062337239583333336,
+                                             "ordinary_accuracy":  0.062337239583333336,
+                                             "gap":  0
+                                         },
+                        "no_context":  {
+                                           "pooled_accuracy":  0.06189,
+                                           "pooled_permutation_null":  0.062378,
+                                           "pooled_flag":  "WITHIN_NULL_CI",
+                                           "holm_cells":  [
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.4412,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.4872,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.7656,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.8036,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.1296,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.2292,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.3914,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.55,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.514,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.782,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.8568,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.1948,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.8466,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.0526,
+                                                                  "holm_pvalue":  0.8416,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.871,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.6894,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              }
+                                                          ],
+                                           "cells":  [
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.4412,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.4872,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.7656,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.8036,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.1296,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.2292,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.3914,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.55,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.514,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.782,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.8568,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.1948,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.8466,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.0526,
+                                                             "flag":  "ABOVE_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.871,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.6894,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         }
+                                                     ],
+                                           "any_holm_significant":  false,
+                                           "arm_eligible":  true
+                                       },
+                        "wall_seconds":  637.08978589999992,
+                        "training_peak_vram_mib":  4600.03,
+                        "training_retries":  -1,
+                        "completed_at":  "2026-10-12T19:09:51.1824979+08:00"
+                    },
+                    {
+                        "type":  "run",
+                        "run_id":  "D_const-43",
+                        "arm":  "D_const",
+                        "seed":  43,
+                        "checkpoint_step":  1200,
+                        "checkpoint_dir":  "C:\\Users\\HiTech\\.cache\\nanochat\\base_checkpoints\\recall-Dconst-s43-w20",
+                        "eval_seed_base":  3000000000,
+                        "n_rows":  8192,
+                        "per_delay":  {
+                                          "16":  {
+                                                     "SALIENT":  0.9970703125,
+                                                     "ORDINARY":  1.0,
+                                                     "SALIENT_no_context":  0.060546875,
+                                                     "ORDINARY_no_context":  0.0625,
+                                                     "SALIENT_permutation_null":  0.0615234375,
+                                                     "ORDINARY_permutation_null":  0.06640625,
+                                                     "SALIENT_full_vocab":  0.9970703125,
+                                                     "ORDINARY_full_vocab":  1.0,
+                                                     "paired_difference":  -0.0029296875
+                                                 },
+                                          "48":  {
+                                                     "SALIENT":  1.0,
+                                                     "ORDINARY":  1.0,
+                                                     "SALIENT_no_context":  0.0625,
+                                                     "ORDINARY_no_context":  0.060546875,
+                                                     "SALIENT_permutation_null":  0.0419921875,
+                                                     "ORDINARY_permutation_null":  0.064453125,
+                                                     "SALIENT_full_vocab":  1.0,
+                                                     "ORDINARY_full_vocab":  1.0,
+                                                     "paired_difference":  0.0
+                                                 },
+                                          "192":  {
+                                                      "SALIENT":  0.0634765625,
+                                                      "ORDINARY":  0.0615234375,
+                                                      "SALIENT_no_context":  0.05859375,
+                                                      "ORDINARY_no_context":  0.068359375,
+                                                      "SALIENT_permutation_null":  0.0595703125,
+                                                      "ORDINARY_permutation_null":  0.0576171875,
+                                                      "SALIENT_full_vocab":  0.0634765625,
+                                                      "ORDINARY_full_vocab":  0.0615234375,
+                                                      "paired_difference":  0.001953125
+                                                  },
+                                          "320":  {
+                                                      "SALIENT":  0.0556640625,
+                                                      "ORDINARY":  0.0595703125,
+                                                      "SALIENT_no_context":  0.0703125,
+                                                      "ORDINARY_no_context":  0.06640625,
+                                                      "SALIENT_permutation_null":  0.0673828125,
+                                                      "ORDINARY_permutation_null":  0.064453125,
+                                                      "SALIENT_full_vocab":  0.0556640625,
+                                                      "ORDINARY_full_vocab":  0.0595703125,
+                                                      "paired_difference":  -0.00390625
+                                                  },
+                                          "448":  {
+                                                      "SALIENT":  0.0673828125,
+                                                      "ORDINARY":  0.0615234375,
+                                                      "SALIENT_no_context":  0.05859375,
+                                                      "ORDINARY_no_context":  0.056640625,
+                                                      "SALIENT_permutation_null":  0.0634765625,
+                                                      "ORDINARY_permutation_null":  0.056640625,
+                                                      "SALIENT_full_vocab":  0.0673828125,
+                                                      "ORDINARY_full_vocab":  0.0615234375,
+                                                      "paired_difference":  0.005859375
+                                                  },
+                                          "576":  {
+                                                      "SALIENT":  0.05859375,
+                                                      "ORDINARY":  0.06640625,
+                                                      "SALIENT_no_context":  0.064453125,
+                                                      "ORDINARY_no_context":  0.0625,
+                                                      "SALIENT_permutation_null":  0.0576171875,
+                                                      "ORDINARY_permutation_null":  0.060546875,
+                                                      "SALIENT_full_vocab":  0.05859375,
+                                                      "ORDINARY_full_vocab":  0.06640625,
+                                                      "paired_difference":  -0.0078125
+                                                  },
+                                          "704":  {
+                                                      "SALIENT":  0.064453125,
+                                                      "ORDINARY":  0.0703125,
+                                                      "SALIENT_no_context":  0.064453125,
+                                                      "ORDINARY_no_context":  0.0654296875,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.068359375,
+                                                      "SALIENT_full_vocab":  0.064453125,
+                                                      "ORDINARY_full_vocab":  0.0703125,
+                                                      "paired_difference":  -0.005859375
+                                                  },
+                                          "832":  {
+                                                      "SALIENT":  0.0576171875,
+                                                      "ORDINARY":  0.068359375,
+                                                      "SALIENT_no_context":  0.0546875,
+                                                      "ORDINARY_no_context":  0.0712890625,
+                                                      "SALIENT_permutation_null":  0.0693359375,
+                                                      "ORDINARY_permutation_null":  0.0595703125,
+                                                      "SALIENT_full_vocab":  0.0576171875,
+                                                      "ORDINARY_full_vocab":  0.068359375,
+                                                      "paired_difference":  -0.0107421875
+                                                  }
+                                      },
+                        "cross_pooled":  {
+                                             "salient_accuracy":  0.061197916666666664,
+                                             "ordinary_accuracy":  0.064615885416666671,
+                                             "gap":  -0.00341796875
+                                         },
+                        "no_context":  {
+                                           "pooled_accuracy":  0.062988,
+                                           "pooled_permutation_null":  0.06189,
+                                           "pooled_flag":  "WITHIN_NULL_CI",
+                                           "holm_cells":  [
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.5574,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.4806,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.7264,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.5244,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.4074,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.1894,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.1552,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.3998,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.7566,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.7808,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.8804,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.3834,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.2158,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.0742,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.907,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.1992,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              }
+                                                          ],
+                                           "cells":  [
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.5574,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.4806,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.7264,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.5244,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.4074,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.1894,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.1552,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.3998,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.7566,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.7808,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.8804,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.3834,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.2158,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.0742,
+                                                             "flag":  "ABOVE_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.907,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.1992,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         }
+                                                     ],
+                                           "any_holm_significant":  false,
+                                           "arm_eligible":  true
+                                       },
+                        "wall_seconds":  638.37404459999993,
+                        "training_peak_vram_mib":  4596.33,
+                        "training_retries":  -1,
+                        "completed_at":  "2026-10-12T19:20:29.5983686+08:00"
+                    },
+                    {
+                        "type":  "no_context_pair_decision",
+                        "pair_id":  "seed-43",
+                        "seed":  43,
+                        "d_arm_eligible":  true,
+                        "dconst_arm_eligible":  true,
+                        "outcome":  "STOP_LIFTED",
+                        "rule":  "Lift only if neither arm has any Holm-significant cell and both pooled checks are WITHIN_NULL_CI.",
+                        "completed_at":  "2026-10-12T19:20:29.6088765+08:00"
+                    },
+                    {
+                        "type":  "run",
+                        "run_id":  "D-101",
+                        "arm":  "D",
+                        "seed":  101,
+                        "checkpoint_step":  1200,
+                        "checkpoint_dir":  "C:\\Users\\HiTech\\.cache\\nanochat\\base_checkpoints\\recall-D-s101-w20",
+                        "eval_seed_base":  3000000000,
+                        "n_rows":  8192,
+                        "per_delay":  {
+                                          "16":  {
+                                                     "SALIENT":  0.9970703125,
+                                                     "ORDINARY":  0.9990234375,
+                                                     "SALIENT_no_context":  0.0693359375,
+                                                     "ORDINARY_no_context":  0.0625,
+                                                     "SALIENT_permutation_null":  0.0537109375,
+                                                     "ORDINARY_permutation_null":  0.0654296875,
+                                                     "SALIENT_full_vocab":  0.9970703125,
+                                                     "ORDINARY_full_vocab":  0.9990234375,
+                                                     "paired_difference":  -0.001953125
+                                                 },
+                                          "48":  {
+                                                     "SALIENT":  1.0,
+                                                     "ORDINARY":  1.0,
+                                                     "SALIENT_no_context":  0.0546875,
+                                                     "ORDINARY_no_context":  0.0615234375,
+                                                     "SALIENT_permutation_null":  0.044921875,
+                                                     "ORDINARY_permutation_null":  0.0703125,
+                                                     "SALIENT_full_vocab":  1.0,
+                                                     "ORDINARY_full_vocab":  1.0,
+                                                     "paired_difference":  0.0
+                                                 },
+                                          "192":  {
+                                                      "SALIENT":  0.0634765625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0625,
+                                                      "ORDINARY_no_context":  0.0576171875,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0634765625,
+                                                      "SALIENT_full_vocab":  0.0634765625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0009765625
+                                                  },
+                                          "320":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0595703125,
+                                                      "ORDINARY_no_context":  0.064453125,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0634765625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0
+                                                  },
+                                          "448":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0673828125,
+                                                      "ORDINARY_no_context":  0.0703125,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0
+                                                  },
+                                          "576":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0576171875,
+                                                      "ORDINARY_no_context":  0.0615234375,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0
+                                                  },
+                                          "704":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0654296875,
+                                                      "ORDINARY_no_context":  0.060546875,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0
+                                                  },
+                                          "832":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.052734375,
+                                                      "ORDINARY_no_context":  0.06640625,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0
+                                                  }
+                                      },
+                        "cross_pooled":  {
+                                             "salient_accuracy":  0.062662760416666671,
+                                             "ordinary_accuracy":  0.0625,
+                                             "gap":  0.00016276041666666666
+                                         },
+                        "no_context":  {
+                                           "pooled_accuracy":  0.062134,
+                                           "pooled_permutation_null":  0.061584,
+                                           "pooled_flag":  "WITHIN_NULL_CI",
+                                           "holm_cells":  [
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.2822,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.5594,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.7126,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.3984,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.52,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.7842,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.7654,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.4436,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.6112,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.1664,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.7256,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.5672,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.155,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.4112,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.5142,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.378,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              }
+                                                          ],
+                                           "cells":  [
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.2822,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.5594,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.7126,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.3984,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.52,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.7842,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.7654,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.4436,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.6112,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.1664,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.7256,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.5672,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.155,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.4112,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.5142,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.378,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         }
+                                                     ],
+                                           "any_holm_significant":  false,
+                                           "arm_eligible":  true
+                                       },
+                        "wall_seconds":  3866.6677149999996,
+                        "training_peak_vram_mib":  4600.03,
+                        "training_retries":  0,
+                        "completed_at":  "2026-10-14T17:49:21.9220446+08:00"
+                    },
+                    {
+                        "type":  "run",
+                        "run_id":  "D_const-101",
+                        "arm":  "D_const",
+                        "seed":  101,
+                        "checkpoint_step":  1200,
+                        "checkpoint_dir":  "C:\\Users\\HiTech\\.cache\\nanochat\\base_checkpoints\\recall-Dconst-s101-w20",
+                        "eval_seed_base":  3000000000,
+                        "n_rows":  8192,
+                        "per_delay":  {
+                                          "16":  {
+                                                     "SALIENT":  0.9970703125,
+                                                     "ORDINARY":  0.9990234375,
+                                                     "SALIENT_no_context":  0.0654296875,
+                                                     "ORDINARY_no_context":  0.0576171875,
+                                                     "SALIENT_permutation_null":  0.0537109375,
+                                                     "ORDINARY_permutation_null":  0.0654296875,
+                                                     "SALIENT_full_vocab":  0.9970703125,
+                                                     "ORDINARY_full_vocab":  0.9990234375,
+                                                     "paired_difference":  -0.001953125
+                                                 },
+                                          "48":  {
+                                                     "SALIENT":  1.0,
+                                                     "ORDINARY":  1.0,
+                                                     "SALIENT_no_context":  0.0576171875,
+                                                     "ORDINARY_no_context":  0.052734375,
+                                                     "SALIENT_permutation_null":  0.044921875,
+                                                     "ORDINARY_permutation_null":  0.0703125,
+                                                     "SALIENT_full_vocab":  1.0,
+                                                     "ORDINARY_full_vocab":  1.0,
+                                                     "paired_difference":  0.0
+                                                 },
+                                          "192":  {
+                                                      "SALIENT":  0.0634765625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0654296875,
+                                                      "ORDINARY_no_context":  0.0546875,
+                                                      "SALIENT_permutation_null":  0.0634765625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0634765625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0009765625
+                                                  },
+                                          "320":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0595703125,
+                                                      "ORDINARY_no_context":  0.0625,
+                                                      "SALIENT_permutation_null":  0.0634765625,
+                                                      "ORDINARY_permutation_null":  0.0625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0
+                                                  },
+                                          "448":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.060546875,
+                                                      "SALIENT_no_context":  0.072265625,
+                                                      "ORDINARY_no_context":  0.0595703125,
+                                                      "SALIENT_permutation_null":  0.0634765625,
+                                                      "ORDINARY_permutation_null":  0.0615234375,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.060546875,
+                                                      "paired_difference":  0.001953125
+                                                  },
+                                          "576":  {
+                                                      "SALIENT":  0.0615234375,
+                                                      "ORDINARY":  0.0634765625,
+                                                      "SALIENT_no_context":  0.0654296875,
+                                                      "ORDINARY_no_context":  0.068359375,
+                                                      "SALIENT_permutation_null":  0.060546875,
+                                                      "ORDINARY_permutation_null":  0.064453125,
+                                                      "SALIENT_full_vocab":  0.0615234375,
+                                                      "ORDINARY_full_vocab":  0.0634765625,
+                                                      "paired_difference":  -0.001953125
+                                                  },
+                                          "704":  {
+                                                      "SALIENT":  0.0634765625,
+                                                      "ORDINARY":  0.0625,
+                                                      "SALIENT_no_context":  0.0517578125,
+                                                      "ORDINARY_no_context":  0.07421875,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0615234375,
+                                                      "SALIENT_full_vocab":  0.0634765625,
+                                                      "ORDINARY_full_vocab":  0.0625,
+                                                      "paired_difference":  0.0009765625
+                                                  },
+                                          "832":  {
+                                                      "SALIENT":  0.0625,
+                                                      "ORDINARY":  0.0634765625,
+                                                      "SALIENT_no_context":  0.064453125,
+                                                      "ORDINARY_no_context":  0.060546875,
+                                                      "SALIENT_permutation_null":  0.0625,
+                                                      "ORDINARY_permutation_null":  0.0634765625,
+                                                      "SALIENT_full_vocab":  0.0625,
+                                                      "ORDINARY_full_vocab":  0.0634765625,
+                                                      "paired_difference":  -0.0009765625
+                                                  }
+                                      },
+                        "cross_pooled":  {
+                                             "salient_accuracy":  0.062662760416666671,
+                                             "ordinary_accuracy":  0.0625,
+                                             "gap":  0.00016276041666666666
+                                         },
+                        "no_context":  {
+                                           "pooled_accuracy":  0.062012,
+                                           "pooled_permutation_null":  0.06073,
+                                           "pooled_flag":  "WITHIN_NULL_CI",
+                                           "holm_cells":  [
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.2576,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  16,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.607,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.849,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  48,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.938,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.2478,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  192,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.7336,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.586,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  320,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.641,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.237,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  448,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.693,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.2376,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  576,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.1492,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.5582,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  704,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.056,
+                                                                  "holm_pvalue":  0.896,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "SALIENT",
+                                                                  "pvalue":  0.3696,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              },
+                                                              {
+                                                                  "delay":  832,
+                                                                  "class":  "ORDINARY",
+                                                                  "pvalue":  0.5668,
+                                                                  "holm_pvalue":  1,
+                                                                  "significant":  false
+                                                              }
+                                                          ],
+                                           "cells":  [
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.2576,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  16,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.607,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.849,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  48,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.938,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.2478,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  192,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.7336,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.586,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  320,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.641,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.237,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  448,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.693,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.2376,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  576,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.1492,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.5582,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  704,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.056,
+                                                             "flag":  "ABOVE_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "SALIENT",
+                                                             "pvalue":  0.3696,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         },
+                                                         {
+                                                             "delay":  832,
+                                                             "class":  "ORDINARY",
+                                                             "pvalue":  0.5668,
+                                                             "flag":  "WITHIN_NULL_CI"
+                                                         }
+                                                     ],
+                                           "any_holm_significant":  false,
+                                           "arm_eligible":  true
+                                       },
+                        "wall_seconds":  2628.1404587999996,
+                        "training_peak_vram_mib":  4596.33,
+                        "training_retries":  0,
+                        "completed_at":  "2026-10-14T18:47:34.8443638+08:00"
+                    }
+                ],
+    "completed":  false,
+    "completed_at":  null
+}
