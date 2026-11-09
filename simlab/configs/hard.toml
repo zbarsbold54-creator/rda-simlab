@@ -1,0 +1,29 @@
+# Hard preset: a hazard-dense variant of Balanced (hazard count = 12).
+# Chosen so the sensor heuristic cap lands near 50% while random stays under
+# 5%, giving headroom to measure a better policy. supply_ratio stays 2.0.
+[world]
+width = 50
+height = 50
+seed = 42
+
+[agent]
+energy = 100
+move_cost = 1
+food_eat = 10
+count = 5
+
+[hazard]
+damage_per_step = 1
+count = 12
+detection_radius = 16
+
+[food]
+spawn_rate = 0.1
+max_food = 20
+regrow_rate = 0.0
+supply_ratio = 2.0
+
+[components]
+drive = "simple"
+retention = "fixed_decay"
+policy = "heuristic"

@@ -1,0 +1,23 @@
+# Named copy of the original harsh defaults for reproducible comparisons.
+[world]
+width = 50
+height = 50
+seed = 42
+
+[agent]
+energy = 100
+move_cost = 1
+food_eat = 10
+count = 5
+
+[hazard]
+damage_per_step = 1
+
+[food]
+spawn_rate = 0.1
+max_food = 20
+
+[components]
+drive = "simple"
+retention = "fixed_decay"
+policy = "heuristic"

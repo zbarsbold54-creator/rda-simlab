@@ -1,0 +1,10 @@
+backbone = "gru"
+drive_core = "none"
+fusion = "concat"
+obs_mode = "obs_drives"
+seed = 0
+
+[backbone_config]
+hidden = 16
+
+[drive_config]

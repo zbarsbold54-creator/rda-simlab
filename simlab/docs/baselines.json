@@ -1,0 +1,1804 @@
+{
+  "generated": "2026-10-24T04:15:25.859716+00:00",
+  "git_describe": "world-v1.6",
+  "scenarios": {
+    "balanced_1": {
+      "agents": 1,
+      "config": "configs/balanced.toml",
+      "config_hash": "c242c237ba242f25",
+      "label": "Balanced 1",
+      "policies": {
+        "heuristic": {
+          "cap_pct": 25.0,
+          "ci": [
+            10.0,
+            45.0
+          ],
+          "death_cause": {
+            "hazard": 15,
+            "starvation": 0,
+            "truncation": 5
+          },
+          "food_left_mean": 385.73,
+          "median": 6774,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_noflee": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 20,
+            "starvation": 0,
+            "truncation": 0
+          },
+          "food_left_mean": 388.753,
+          "median": 662,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_v2": {
+          "cap_pct": 20.0,
+          "ci": [
+            5.0,
+            40.0
+          ],
+          "death_cause": {
+            "hazard": 14,
+            "starvation": 2,
+            "truncation": 4
+          },
+          "food_left_mean": 391.703,
+          "median": 4449,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "oracle_avoid": {
+          "cap_pct": 100.0,
+          "ci": [
+            100.0,
+            100.0
+          ],
+          "death_cause": {
+            "hazard": 0,
+            "starvation": 0,
+            "truncation": 20
+          },
+          "food_left_mean": 331.465,
+          "median": 10000,
+          "policy_hash": "2d4385186d9403dc"
+        },
+        "random": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 20,
+            "starvation": 0,
+            "truncation": 0
+          },
+          "food_left_mean": 400.0,
+          "median": 1886,
+          "policy_hash": "8bdcebec1666c553"
+        }
+      }
+    },
+    "balanced_20": {
+      "agents": 20,
+      "config": "configs/balanced.toml",
+      "config_hash": "c592c21dd7becbc7",
+      "label": "Balanced 20",
+      "policies": {
+        "heuristic": {
+          "cap_pct": 91.75,
+          "ci": [
+            88.5,
+            95.0
+          ],
+          "death_cause": {
+            "hazard": 33,
+            "starvation": 0,
+            "truncation": 367
+          },
+          "food_left_mean": 398.736,
+          "median": 10000,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_noflee": {
+          "cap_pct": 8.75,
+          "ci": [
+            5.0,
+            13.0
+          ],
+          "death_cause": {
+            "hazard": 365,
+            "starvation": 0,
+            "truncation": 35
+          },
+          "food_left_mean": 399.998,
+          "median": 4138,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_v2": {
+          "cap_pct": 85.75,
+          "ci": [
+            80.5,
+            90.5
+          ],
+          "death_cause": {
+            "hazard": 57,
+            "starvation": 0,
+            "truncation": 343
+          },
+          "food_left_mean": 384.906,
+          "median": 10000,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "oracle_avoid": {
+          "cap_pct": 78.0,
+          "ci": [
+            68.0,
+            86.75
+          ],
+          "death_cause": {
+            "hazard": 0,
+            "starvation": 88,
+            "truncation": 312
+          },
+          "food_left_mean": 349.944,
+          "median": 10000,
+          "policy_hash": "2d4385186d9403dc"
+        },
+        "random": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 211,
+            "starvation": 189,
+            "truncation": 0
+          },
+          "food_left_mean": 400.0,
+          "median": 4264,
+          "policy_hash": "8bdcebec1666c553"
+        }
+      }
+    },
+    "balanced_5": {
+      "agents": 5,
+      "config": "configs/balanced.toml",
+      "config_hash": "bd41bc6f159b9b93",
+      "label": "Balanced 5",
+      "policies": {
+        "heuristic": {
+          "cap_pct": 80.0,
+          "ci": [
+            71.0,
+            88.0
+          ],
+          "death_cause": {
+            "hazard": 20,
+            "starvation": 0,
+            "truncation": 80
+          },
+          "food_left_mean": 372.471,
+          "median": 10000,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_noflee": {
+          "cap_pct": 4.0,
+          "ci": [
+            1.0,
+            8.0
+          ],
+          "death_cause": {
+            "hazard": 96,
+            "starvation": 0,
+            "truncation": 4
+          },
+          "food_left_mean": 390.847,
+          "median": 1201,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_v2": {
+          "cap_pct": 69.0,
+          "ci": [
+            55.0,
+            82.0
+          ],
+          "death_cause": {
+            "hazard": 27,
+            "starvation": 4,
+            "truncation": 69
+          },
+          "food_left_mean": 363.594,
+          "median": 10000,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "oracle_avoid": {
+          "cap_pct": 98.0,
+          "ci": [
+            95.0,
+            100.0
+          ],
+          "death_cause": {
+            "hazard": 0,
+            "starvation": 2,
+            "truncation": 98
+          },
+          "food_left_mean": 312.374,
+          "median": 10000,
+          "policy_hash": "2d4385186d9403dc"
+        },
+        "random": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 90,
+            "starvation": 10,
+            "truncation": 0
+          },
+          "food_left_mean": 400.0,
+          "median": 3242,
+          "policy_hash": "8bdcebec1666c553"
+        }
+      }
+    },
+    "hard_1": {
+      "agents": 1,
+      "config": "configs/hard.toml",
+      "config_hash": "8d51b084e316b6ff",
+      "label": "Hard 1",
+      "policies": {
+        "heuristic": {
+          "cap_pct": 5.0,
+          "ci": [
+            0.0,
+            15.0
+          ],
+          "death_cause": {
+            "hazard": 19,
+            "starvation": 0,
+            "truncation": 1
+          },
+          "food_left_mean": 388.549,
+          "median": 4237,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_noflee": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 20,
+            "starvation": 0,
+            "truncation": 0
+          },
+          "food_left_mean": 394.185,
+          "median": 432,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_v2": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 20,
+            "starvation": 0,
+            "truncation": 0
+          },
+          "food_left_mean": 389.46,
+          "median": 1804,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "oracle_avoid": {
+          "cap_pct": 95.0,
+          "ci": [
+            85.0,
+            100.0
+          ],
+          "death_cause": {
+            "hazard": 1,
+            "starvation": 0,
+            "truncation": 19
+          },
+          "food_left_mean": 328.197,
+          "median": 10000,
+          "policy_hash": "2d4385186d9403dc"
+        },
+        "random": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 20,
+            "starvation": 0,
+            "truncation": 0
+          },
+          "food_left_mean": 400.0,
+          "median": 728,
+          "policy_hash": "8bdcebec1666c553"
+        }
+      }
+    },
+    "hard_20": {
+      "agents": 20,
+      "config": "configs/hard.toml",
+      "config_hash": "f8c835f0bdd2c1ec",
+      "label": "Hard 20",
+      "policies": {
+        "heuristic": {
+          "cap_pct": 71.0,
+          "ci": [
+            62.0,
+            79.5
+          ],
+          "death_cause": {
+            "hazard": 116,
+            "starvation": 0,
+            "truncation": 284
+          },
+          "food_left_mean": 397.891,
+          "median": 10000,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_noflee": {
+          "cap_pct": 0.25,
+          "ci": [
+            0.0,
+            0.75
+          ],
+          "death_cause": {
+            "hazard": 399,
+            "starvation": 0,
+            "truncation": 1
+          },
+          "food_left_mean": 399.948,
+          "median": 1726,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_v2": {
+          "cap_pct": 72.0,
+          "ci": [
+            63.0,
+            80.5
+          ],
+          "death_cause": {
+            "hazard": 112,
+            "starvation": 0,
+            "truncation": 288
+          },
+          "food_left_mean": 385.523,
+          "median": 10000,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "oracle_avoid": {
+          "cap_pct": 48.25,
+          "ci": [
+            40.5,
+            56.0
+          ],
+          "death_cause": {
+            "hazard": 13,
+            "starvation": 194,
+            "truncation": 193
+          },
+          "food_left_mean": 366.095,
+          "median": 8865,
+          "policy_hash": "2d4385186d9403dc"
+        },
+        "random": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 389,
+            "starvation": 11,
+            "truncation": 0
+          },
+          "food_left_mean": 400.0,
+          "median": 2508,
+          "policy_hash": "8bdcebec1666c553"
+        }
+      }
+    },
+    "hard_5": {
+      "agents": 5,
+      "config": "configs/hard.toml",
+      "config_hash": "0a8c8fed3ee71e1d",
+      "label": "Hard 5",
+      "policies": {
+        "heuristic": {
+          "cap_pct": 46.0,
+          "ci": [
+            32.0,
+            60.0
+          ],
+          "death_cause": {
+            "hazard": 54,
+            "starvation": 0,
+            "truncation": 46
+          },
+          "food_left_mean": 381.885,
+          "median": 9110,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_noflee": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 100,
+            "starvation": 0,
+            "truncation": 0
+          },
+          "food_left_mean": 395.182,
+          "median": 643,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_v2": {
+          "cap_pct": 26.0,
+          "ci": [
+            15.0,
+            39.0
+          ],
+          "death_cause": {
+            "hazard": 74,
+            "starvation": 0,
+            "truncation": 26
+          },
+          "food_left_mean": 385.659,
+          "median": 4250,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "oracle_avoid": {
+          "cap_pct": 96.0,
+          "ci": [
+            91.0,
+            100.0
+          ],
+          "death_cause": {
+            "hazard": 4,
+            "starvation": 0,
+            "truncation": 96
+          },
+          "food_left_mean": 314.659,
+          "median": 10000,
+          "policy_hash": "2d4385186d9403dc"
+        },
+        "random": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 100,
+            "starvation": 0,
+            "truncation": 0
+          },
+          "food_left_mean": 400.0,
+          "median": 1372,
+          "policy_hash": "8bdcebec1666c553"
+        }
+      }
+    },
+    "solo": {
+      "agents": 1,
+      "config": "configs/solo.toml",
+      "config_hash": "8f3475382445dfec",
+      "label": "Solo",
+      "policies": {
+        "heuristic": {
+          "cap_pct": 50.0,
+          "ci": [
+            30.0,
+            70.0
+          ],
+          "death_cause": {
+            "hazard": 10,
+            "starvation": 0,
+            "truncation": 10
+          },
+          "food_left_mean": 379.99,
+          "median": 10000,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_noflee": {
+          "cap_pct": 25.0,
+          "ci": [
+            10.0,
+            45.0
+          ],
+          "death_cause": {
+            "hazard": 15,
+            "starvation": 0,
+            "truncation": 5
+          },
+          "food_left_mean": 376.819,
+          "median": 1240,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "heuristic_v2": {
+          "cap_pct": 35.0,
+          "ci": [
+            15.0,
+            55.0
+          ],
+          "death_cause": {
+            "hazard": 6,
+            "starvation": 7,
+            "truncation": 7
+          },
+          "food_left_mean": 384.323,
+          "median": 6417,
+          "policy_hash": "8bdcebec1666c553"
+        },
+        "oracle_avoid": {
+          "cap_pct": 100.0,
+          "ci": [
+            100.0,
+            100.0
+          ],
+          "death_cause": {
+            "hazard": 0,
+            "starvation": 0,
+            "truncation": 20
+          },
+          "food_left_mean": 323.976,
+          "median": 10000,
+          "policy_hash": "2d4385186d9403dc"
+        },
+        "random": {
+          "cap_pct": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "death_cause": {
+            "hazard": 16,
+            "starvation": 4,
+            "truncation": 0
+          },
+          "food_left_mean": 400.0,
+          "median": 4198,
+          "policy_hash": "8bdcebec1666c553"
+        }
+      }
+    }
+  },
+  "seed_sets": {
+    "dev": {
+      "scenarios": {
+        "balanced_1": {
+          "agents": 1,
+          "config": "configs/balanced.toml",
+          "config_hash": "c242c237ba242f25",
+          "label": "Balanced 1",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 25.0,
+              "ci": [
+                10.0,
+                45.0
+              ],
+              "death_cause": {
+                "hazard": 15,
+                "starvation": 0,
+                "truncation": 5
+              },
+              "food_left_mean": 385.73,
+              "median": 6774,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 388.753,
+              "median": 662,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 20.0,
+              "ci": [
+                5.0,
+                40.0
+              ],
+              "death_cause": {
+                "hazard": 14,
+                "starvation": 2,
+                "truncation": 4
+              },
+              "food_left_mean": 391.703,
+              "median": 4449,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 100.0,
+              "ci": [
+                100.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 0,
+                "truncation": 20
+              },
+              "food_left_mean": 331.465,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 1886,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "balanced_20": {
+          "agents": 20,
+          "config": "configs/balanced.toml",
+          "config_hash": "c592c21dd7becbc7",
+          "label": "Balanced 20",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 91.75,
+              "ci": [
+                88.5,
+                95.0
+              ],
+              "death_cause": {
+                "hazard": 33,
+                "starvation": 0,
+                "truncation": 367
+              },
+              "food_left_mean": 398.736,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 8.75,
+              "ci": [
+                5.0,
+                13.0
+              ],
+              "death_cause": {
+                "hazard": 365,
+                "starvation": 0,
+                "truncation": 35
+              },
+              "food_left_mean": 399.998,
+              "median": 4138,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 85.75,
+              "ci": [
+                80.5,
+                90.5
+              ],
+              "death_cause": {
+                "hazard": 57,
+                "starvation": 0,
+                "truncation": 343
+              },
+              "food_left_mean": 384.906,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 78.0,
+              "ci": [
+                68.0,
+                86.75
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 88,
+                "truncation": 312
+              },
+              "food_left_mean": 349.944,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 211,
+                "starvation": 189,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 4264,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "balanced_5": {
+          "agents": 5,
+          "config": "configs/balanced.toml",
+          "config_hash": "bd41bc6f159b9b93",
+          "label": "Balanced 5",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 80.0,
+              "ci": [
+                71.0,
+                88.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 80
+              },
+              "food_left_mean": 372.471,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 4.0,
+              "ci": [
+                1.0,
+                8.0
+              ],
+              "death_cause": {
+                "hazard": 96,
+                "starvation": 0,
+                "truncation": 4
+              },
+              "food_left_mean": 390.847,
+              "median": 1201,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 69.0,
+              "ci": [
+                55.0,
+                82.0
+              ],
+              "death_cause": {
+                "hazard": 27,
+                "starvation": 4,
+                "truncation": 69
+              },
+              "food_left_mean": 363.594,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 98.0,
+              "ci": [
+                95.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 2,
+                "truncation": 98
+              },
+              "food_left_mean": 312.374,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 90,
+                "starvation": 10,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 3242,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "hard_1": {
+          "agents": 1,
+          "config": "configs/hard.toml",
+          "config_hash": "8d51b084e316b6ff",
+          "label": "Hard 1",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 5.0,
+              "ci": [
+                0.0,
+                15.0
+              ],
+              "death_cause": {
+                "hazard": 19,
+                "starvation": 0,
+                "truncation": 1
+              },
+              "food_left_mean": 388.549,
+              "median": 4237,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 394.185,
+              "median": 432,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 389.46,
+              "median": 1804,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 95.0,
+              "ci": [
+                85.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 1,
+                "starvation": 0,
+                "truncation": 19
+              },
+              "food_left_mean": 328.197,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 728,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "hard_20": {
+          "agents": 20,
+          "config": "configs/hard.toml",
+          "config_hash": "f8c835f0bdd2c1ec",
+          "label": "Hard 20",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 71.0,
+              "ci": [
+                62.0,
+                79.5
+              ],
+              "death_cause": {
+                "hazard": 116,
+                "starvation": 0,
+                "truncation": 284
+              },
+              "food_left_mean": 397.891,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 0.25,
+              "ci": [
+                0.0,
+                0.75
+              ],
+              "death_cause": {
+                "hazard": 399,
+                "starvation": 0,
+                "truncation": 1
+              },
+              "food_left_mean": 399.948,
+              "median": 1726,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 72.0,
+              "ci": [
+                63.0,
+                80.5
+              ],
+              "death_cause": {
+                "hazard": 112,
+                "starvation": 0,
+                "truncation": 288
+              },
+              "food_left_mean": 385.523,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 48.25,
+              "ci": [
+                40.5,
+                56.0
+              ],
+              "death_cause": {
+                "hazard": 13,
+                "starvation": 194,
+                "truncation": 193
+              },
+              "food_left_mean": 366.095,
+              "median": 8865,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 389,
+                "starvation": 11,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 2508,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "hard_5": {
+          "agents": 5,
+          "config": "configs/hard.toml",
+          "config_hash": "0a8c8fed3ee71e1d",
+          "label": "Hard 5",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 46.0,
+              "ci": [
+                32.0,
+                60.0
+              ],
+              "death_cause": {
+                "hazard": 54,
+                "starvation": 0,
+                "truncation": 46
+              },
+              "food_left_mean": 381.885,
+              "median": 9110,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 100,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 395.182,
+              "median": 643,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 26.0,
+              "ci": [
+                15.0,
+                39.0
+              ],
+              "death_cause": {
+                "hazard": 74,
+                "starvation": 0,
+                "truncation": 26
+              },
+              "food_left_mean": 385.659,
+              "median": 4250,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 96.0,
+              "ci": [
+                91.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 4,
+                "starvation": 0,
+                "truncation": 96
+              },
+              "food_left_mean": 314.659,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 100,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 1372,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "solo": {
+          "agents": 1,
+          "config": "configs/solo.toml",
+          "config_hash": "8f3475382445dfec",
+          "label": "Solo",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 50.0,
+              "ci": [
+                30.0,
+                70.0
+              ],
+              "death_cause": {
+                "hazard": 10,
+                "starvation": 0,
+                "truncation": 10
+              },
+              "food_left_mean": 379.99,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 25.0,
+              "ci": [
+                10.0,
+                45.0
+              ],
+              "death_cause": {
+                "hazard": 15,
+                "starvation": 0,
+                "truncation": 5
+              },
+              "food_left_mean": 376.819,
+              "median": 1240,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 35.0,
+              "ci": [
+                15.0,
+                55.0
+              ],
+              "death_cause": {
+                "hazard": 6,
+                "starvation": 7,
+                "truncation": 7
+              },
+              "food_left_mean": 384.323,
+              "median": 6417,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 100.0,
+              "ci": [
+                100.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 0,
+                "truncation": 20
+              },
+              "food_left_mean": 323.976,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 16,
+                "starvation": 4,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 4198,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        }
+      },
+      "seed_list": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    "test": {
+      "scenarios": {
+        "balanced_1": {
+          "agents": 1,
+          "config": "configs/balanced.toml",
+          "config_hash": "c242c237ba242f25",
+          "label": "Balanced 1",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 40.0,
+              "ci": [
+                20.0,
+                60.0
+              ],
+              "death_cause": {
+                "hazard": 12,
+                "starvation": 0,
+                "truncation": 8
+              },
+              "food_left_mean": 388.901,
+              "median": 7253,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 387.015,
+              "median": 669,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 30.0,
+              "ci": [
+                10.0,
+                50.0
+              ],
+              "death_cause": {
+                "hazard": 14,
+                "starvation": 0,
+                "truncation": 6
+              },
+              "food_left_mean": 388.495,
+              "median": 5256,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 100.0,
+              "ci": [
+                100.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 0,
+                "truncation": 20
+              },
+              "food_left_mean": 334.259,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 1208,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "balanced_20": {
+          "agents": 20,
+          "config": "configs/balanced.toml",
+          "config_hash": "c592c21dd7becbc7",
+          "label": "Balanced 20",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 87.75,
+              "ci": [
+                81.5,
+                92.75
+              ],
+              "death_cause": {
+                "hazard": 49,
+                "starvation": 0,
+                "truncation": 351
+              },
+              "food_left_mean": 398.221,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 10.5,
+              "ci": [
+                6.25,
+                15.5
+              ],
+              "death_cause": {
+                "hazard": 358,
+                "starvation": 0,
+                "truncation": 42
+              },
+              "food_left_mean": 399.996,
+              "median": 3986,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 84.5,
+              "ci": [
+                80.0,
+                88.5
+              ],
+              "death_cause": {
+                "hazard": 62,
+                "starvation": 0,
+                "truncation": 338
+              },
+              "food_left_mean": 382.828,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 71.25,
+              "ci": [
+                61.0,
+                81.5
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 115,
+                "truncation": 285
+              },
+              "food_left_mean": 349.882,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 198,
+                "starvation": 202,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 4261,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "balanced_5": {
+          "agents": 5,
+          "config": "configs/balanced.toml",
+          "config_hash": "bd41bc6f159b9b93",
+          "label": "Balanced 5",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 78.0,
+              "ci": [
+                67.0,
+                88.0
+              ],
+              "death_cause": {
+                "hazard": 22,
+                "starvation": 0,
+                "truncation": 78
+              },
+              "food_left_mean": 377.057,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 6.0,
+              "ci": [
+                0.0,
+                14.0
+              ],
+              "death_cause": {
+                "hazard": 92,
+                "starvation": 2,
+                "truncation": 6
+              },
+              "food_left_mean": 387.917,
+              "median": 1266,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 64.0,
+              "ci": [
+                52.0,
+                75.0
+              ],
+              "death_cause": {
+                "hazard": 34,
+                "starvation": 2,
+                "truncation": 64
+              },
+              "food_left_mean": 368.553,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 99.0,
+              "ci": [
+                97.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 1,
+                "starvation": 0,
+                "truncation": 99
+              },
+              "food_left_mean": 323.929,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 92,
+                "starvation": 8,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 3408,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "hard_1": {
+          "agents": 1,
+          "config": "configs/hard.toml",
+          "config_hash": "8d51b084e316b6ff",
+          "label": "Hard 1",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 5.0,
+              "ci": [
+                0.0,
+                15.0
+              ],
+              "death_cause": {
+                "hazard": 19,
+                "starvation": 0,
+                "truncation": 1
+              },
+              "food_left_mean": 390.541,
+              "median": 3025,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 393.274,
+              "median": 440,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 15.0,
+              "ci": [
+                0.0,
+                35.0
+              ],
+              "death_cause": {
+                "hazard": 17,
+                "starvation": 0,
+                "truncation": 3
+              },
+              "food_left_mean": 387.213,
+              "median": 5403,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 100.0,
+              "ci": [
+                100.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 0,
+                "truncation": 20
+              },
+              "food_left_mean": 325.97,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 20,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 691,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "hard_20": {
+          "agents": 20,
+          "config": "configs/hard.toml",
+          "config_hash": "f8c835f0bdd2c1ec",
+          "label": "Hard 20",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 73.25,
+              "ci": [
+                67.25,
+                79.5
+              ],
+              "death_cause": {
+                "hazard": 107,
+                "starvation": 0,
+                "truncation": 293
+              },
+              "food_left_mean": 398.442,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 0.25,
+              "ci": [
+                0.0,
+                0.75
+              ],
+              "death_cause": {
+                "hazard": 399,
+                "starvation": 0,
+                "truncation": 1
+              },
+              "food_left_mean": 400.0,
+              "median": 1680,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 68.5,
+              "ci": [
+                61.25,
+                75.75
+              ],
+              "death_cause": {
+                "hazard": 126,
+                "starvation": 0,
+                "truncation": 274
+              },
+              "food_left_mean": 390.875,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 53.75,
+              "ci": [
+                47.75,
+                60.5
+              ],
+              "death_cause": {
+                "hazard": 18,
+                "starvation": 167,
+                "truncation": 215
+              },
+              "food_left_mean": 349.721,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 386,
+                "starvation": 14,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 2585,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "hard_5": {
+          "agents": 5,
+          "config": "configs/hard.toml",
+          "config_hash": "0a8c8fed3ee71e1d",
+          "label": "Hard 5",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 57.0,
+              "ci": [
+                40.0,
+                75.0
+              ],
+              "death_cause": {
+                "hazard": 43,
+                "starvation": 0,
+                "truncation": 57
+              },
+              "food_left_mean": 381.819,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 1.0,
+              "ci": [
+                0.0,
+                3.0
+              ],
+              "death_cause": {
+                "hazard": 99,
+                "starvation": 0,
+                "truncation": 1
+              },
+              "food_left_mean": 394.872,
+              "median": 660,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 41.0,
+              "ci": [
+                27.0,
+                55.0
+              ],
+              "death_cause": {
+                "hazard": 59,
+                "starvation": 0,
+                "truncation": 41
+              },
+              "food_left_mean": 385.032,
+              "median": 7927,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 93.0,
+              "ci": [
+                87.0,
+                98.0
+              ],
+              "death_cause": {
+                "hazard": 5,
+                "starvation": 2,
+                "truncation": 93
+              },
+              "food_left_mean": 318.826,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 100,
+                "starvation": 0,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 1292,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        },
+        "solo": {
+          "agents": 1,
+          "config": "configs/solo.toml",
+          "config_hash": "8f3475382445dfec",
+          "label": "Solo",
+          "policies": {
+            "heuristic": {
+              "cap_pct": 65.0,
+              "ci": [
+                45.0,
+                85.0
+              ],
+              "death_cause": {
+                "hazard": 7,
+                "starvation": 0,
+                "truncation": 13
+              },
+              "food_left_mean": 381.484,
+              "median": 10000,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_noflee": {
+              "cap_pct": 20.0,
+              "ci": [
+                5.0,
+                40.0
+              ],
+              "death_cause": {
+                "hazard": 16,
+                "starvation": 0,
+                "truncation": 4
+              },
+              "food_left_mean": 381.479,
+              "median": 1169,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "heuristic_v2": {
+              "cap_pct": 10.0,
+              "ci": [
+                0.0,
+                25.0
+              ],
+              "death_cause": {
+                "hazard": 14,
+                "starvation": 4,
+                "truncation": 2
+              },
+              "food_left_mean": 393.138,
+              "median": 5776,
+              "policy_hash": "8bdcebec1666c553"
+            },
+            "oracle_avoid": {
+              "cap_pct": 100.0,
+              "ci": [
+                100.0,
+                100.0
+              ],
+              "death_cause": {
+                "hazard": 0,
+                "starvation": 0,
+                "truncation": 20
+              },
+              "food_left_mean": 324.327,
+              "median": 10000,
+              "policy_hash": "2d4385186d9403dc"
+            },
+            "random": {
+              "cap_pct": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "death_cause": {
+                "hazard": 12,
+                "starvation": 8,
+                "truncation": 0
+              },
+              "food_left_mean": 400.0,
+              "median": 4237,
+              "policy_hash": "8bdcebec1666c553"
+            }
+          }
+        }
+      },
+      "seed_list": [
+        1000,
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010,
+        1011,
+        1012,
+        1013,
+        1014,
+        1015,
+        1016,
+        1017,
+        1018,
+        1019
+      ]
+    }
+  },
+  "step_cap": 10000
+}
